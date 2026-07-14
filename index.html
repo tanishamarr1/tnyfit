@@ -11,7 +11,7 @@
     <link rel="apple-touch-icon" href="TNY SIN FONDO.png">
 
     <!-- Open Graph -->
-    <meta property="og:title" content="TNY FIT">
+    <meta property="og:title" content="Tnyfit">
     <meta property="og:description" content="Plan de entrenamiento y nutrición adaptativo de alta precisión.">
     <meta property="og:image" content="TNY SIN FONDO.png">
     <meta property="og:type" content="website">
@@ -446,13 +446,12 @@
                     <!-- TAB 4: PERFIL Y AUDITORÍA DE BASE DE DATOS -->
                     <div id="tab-perfil" class="tab-content flex-col space-y-4 w-full max-w-2xl mx-auto">
                         <div class="p-6 rounded-2xl bg-cardBg border border-neutral-800 flex flex-col items-center text-center space-y-3">
-                            <label for="avatar-upload-input" class="relative cursor-pointer group">
+                            <button type="button" onclick="openEditProfile()" class="relative cursor-pointer group" aria-label="Editar perfil">
                                 <div id="profile-big-avatar" class="w-16 h-16 rounded-full bg-neutral-900 border-2 border-brandPurple flex items-center justify-center text-white text-xl font-bold overflow-hidden">--</div>
                                 <div class="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                    <i data-lucide="camera" class="w-4 h-4 text-white"></i>
+                                    <i data-lucide="pencil" class="w-4 h-4 text-white"></i>
                                 </div>
-                            </label>
-                            <input type="file" id="avatar-upload-input" accept="image/*" class="hidden">
+                            </button>
                             <div>
                                 <h4 id="profile-full-name" class="text-base font-bold text-white">--</h4>
                                 <p id="profile-email" class="text-xs text-brandPurple font-mono mt-0.5">--</p>
@@ -549,6 +548,17 @@
             </div>
 
             <form id="edit-profile-form" class="space-y-4">
+                <div class="flex flex-col items-center gap-2 pb-2">
+                    <label for="edit-avatar-upload-input" class="relative cursor-pointer group">
+                        <div id="edit-profile-avatar-preview" class="w-20 h-20 rounded-full bg-neutral-900 border-2 border-brandPurple flex items-center justify-center text-white text-2xl font-bold overflow-hidden">--</div>
+                        <div class="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <i data-lucide="camera" class="w-5 h-5 text-white"></i>
+                        </div>
+                    </label>
+                    <input type="file" id="edit-avatar-upload-input" accept="image/*" class="hidden">
+                    <span class="text-[11px] text-neutral-500">Toca la foto para cambiarla</span>
+                </div>
+
                 <div>
                     <label class="block text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-1.5">Nombre Completo</label>
                     <input type="text" id="edit-name" required class="w-full bg-neutral-900 border border-neutral-800 rounded-2xl px-4 py-3 text-white placeholder-neutral-600 focus:outline-none focus:border-brandPurple transition-colors text-sm">

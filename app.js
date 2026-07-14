@@ -1012,12 +1012,13 @@ function buildUserWorkspace() {
 
 function renderAvatar(initials) {
     const spots = [
-        { el: document.getElementById('user-avatar'), size: 'small' },
-        { el: document.getElementById('sidebar-avatar'), size: 'small' },
-        { el: document.getElementById('profile-big-avatar'), size: 'big' }
+        document.getElementById('user-avatar'),
+        document.getElementById('sidebar-avatar'),
+        document.getElementById('profile-big-avatar'),
+        document.getElementById('edit-profile-avatar-preview')
     ];
 
-    spots.forEach(({ el }) => {
+    spots.forEach((el) => {
         if (!el) return;
         if (sessionState.avatarUrl) {
             el.textContent = '';
@@ -1076,7 +1077,7 @@ async function uploadAvatar(file) {
     }
 }
 
-document.getElementById('avatar-upload-input')?.addEventListener('change', (e) => {
+document.getElementById('edit-avatar-upload-input')?.addEventListener('change', (e) => {
     const file = e.target.files[0];
     uploadAvatar(file);
 });
