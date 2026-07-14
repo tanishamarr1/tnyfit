@@ -211,6 +211,37 @@ async function insertProfile(state) {
     if (error) throw error;
 }
 
+// ---- Perfil pendiente (para cuando la confirmación de email está activada) ----
+// Si Supabase exige confirmar el correo, signUp() no da sesión todavía, así que
+// RLS bloquearía el insert. Guardamos los datos del wizard en localStorage y los
+// insertamos recién cuando exista una sesión real (primer login tras confirmar).
+const PENDING_PROFILE_KEY = 'tnyfit_pending_profile';
+
+function savePendingProfile(profile) {
+    localStorage.setItem(PENDING_PROFILE_KEY, JSON.stringify(profile));
+}
+
+function getPendingProfile() {
+    const raw = localStorage.getItem(PENDING_PROFILE_KEY);
+    return raw ? JSON.parse(raw) : null;
+}
+
+function clearPendingProfile() {
+    localStorage.removeItem(PENDING_PROFILE_KEY);
+}
+
+// Inserta el perfil pendiente (si hay uno) usando el id real que Supabase Auth
+// asignó a esta sesión ya confirmada/logueada.
+async function insertPendingProfileIfAny(session) {
+    const pending = getPendingProfile();
+    if (!pending) return null;
+
+    const profileToInsert = { ...pending, id: session.user.id, email: session.user.email };
+    await insertProfile(profileToInsert);
+    clearPendingProfile();
+    return profileToInsert;
+}
+
 async function saveSession() {
     if (!sessionState) return;
     try {
@@ -243,6 +274,48 @@ document.addEventListener('DOMContentLoaded', async () => {
 supabaseClient.auth.onAuthStateChange((event) => {
     if (event === 'SIGNED_OUT') {
         sessionState = null;
+    }
+    if (event === 'PASSWORD_RECOVERY') {
+        // El usuario volvió del enlace de "olvidé mi contraseña". Supabase ya
+        // creó una sesión temporal válida solo para poder llamar updateUser().
+        showRecoveryScreen();
+    }
+});
+
+function showRecoveryScreen() {
+    document.getElementById('auth-loading')?.classList.add('hidden');
+    document.getElementById('screen-dashboard').classList.add('hidden');
+    document.getElementById('screen-login').classList.remove('hidden');
+    document.getElementById('panel-signin').classList.add('hidden');
+    document.getElementById('panel-register').classList.add('hidden');
+    document.getElementById('panel-recovery').classList.remove('hidden');
+}
+
+const recoveryForm = document.getElementById('recovery-form');
+recoveryForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const newPassword = document.getElementById('recovery-password').value;
+    const confirmPassword = document.getElementById('recovery-password-confirm').value;
+
+    if (newPassword.length < 6) {
+        showToast('La contraseña debe tener al menos 6 caracteres.', 'error');
+        return;
+    }
+    if (newPassword !== confirmPassword) {
+        showToast('Las contraseñas no coinciden.', 'error');
+        return;
+    }
+
+    try {
+        const { error } = await supabaseClient.auth.updateUser({ password: newPassword });
+        if (error) throw error;
+        recoveryForm.reset();
+        showToast('Contraseña actualizada. Ya puedes usarla para iniciar sesión.', 'success');
+        document.getElementById('panel-recovery').classList.add('hidden');
+        goToSignin();
+    } catch (err) {
+        console.error(err);
+        showToast(err.message || 'No se pudo actualizar la contraseña.', 'error');
     }
 });
 
@@ -406,16 +479,21 @@ registerForm.addEventListener('submit', async (e) => {
         };
         newProfile.weightLog.push({ date: todayKey(), kg: newProfile.weightKg });
 
-        await insertProfile(newProfile);
-        registerForm.reset();
-        wizardStep = 1;
-
         if (data.session) {
-            // Confirmación de email desactivada en el proyecto: entra directo.
+            // Confirmación de email desactivada en el proyecto: ya hay sesión,
+            // así que auth.uid() coincide y el insert pasa la política de RLS.
+            await insertProfile(newProfile);
+            registerForm.reset();
+            wizardStep = 1;
             showToast(`¡Bienvenido, ${newProfile.name.split(' ')[0]}! Tu ecosistema fue generado.`, 'success');
             await checkActiveSession();
         } else {
-            // Confirmación de email activada: Supabase envió un correo de verificación.
+            // Confirmación de email activada: todavía NO hay sesión, así que
+            // insertar ahora violaría RLS (auth.uid() sería null). Guardamos
+            // el perfil localmente y lo insertamos en el primer login real.
+            savePendingProfile(newProfile);
+            registerForm.reset();
+            wizardStep = 1;
             showToast('Cuenta creada. Revisa tu correo para confirmarla antes de iniciar sesión.', 'info');
             goToSignin();
         }
@@ -451,7 +529,9 @@ async function handleForgotPassword() {
         return;
     }
     try {
-        const { error } = await supabaseClient.auth.resetPasswordForEmail(email);
+        const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+            redirectTo: window.location.origin + window.location.pathname
+        });
         if (error) throw error;
         showToast('Te enviamos un enlace para restablecer tu contraseña.', 'success');
     } catch (err) {
@@ -473,9 +553,20 @@ async function checkActiveSession() {
     }
 
     try {
-        const profile = await fetchProfile(session.user.id);
+        let profile = await fetchProfile(session.user.id);
+
         if (!profile) {
-            // Sesión válida pero sin fila de perfil (raro: registro interrumpido) → cerrar sesión.
+            // Sesión válida pero sin fila de perfil todavía: probablemente es el
+            // primer login tras confirmar el correo. Si guardamos un perfil
+            // pendiente durante el registro, lo insertamos ahora que sí hay sesión.
+            const inserted = await insertPendingProfileIfAny(session);
+            if (inserted) {
+                profile = await fetchProfile(session.user.id);
+            }
+        }
+
+        if (!profile) {
+            // Realmente no hay perfil ni pendiente que insertar → cerrar sesión.
             await logout();
             return;
         }
