@@ -368,7 +368,9 @@ async function insertPendingProfileIfAny(session) {
 // REGISTRO + WIZARD
 // =========================================================================
 
-const WIZARD_TOTAL_STEPS = 3;
+// FIX 1: había 4 pasos en el HTML (data-step="1".."4") pero esta constante
+// decía 3, por lo que el wizard nunca mostraba/permitía el paso 4 (Objetivo).
+const WIZARD_TOTAL_STEPS = 4;
 let wizardStep = 1;
 
 function goToRegister() {
@@ -387,7 +389,11 @@ function renderWizardStep() {
     document.querySelectorAll('.wizard-step').forEach(step => {
         step.classList.remove('active');
     });
-    document.getElementById(`wizard-step-${wizardStep}`)?.classList.add('active');
+    // FIX 2: los pasos del wizard en el HTML no tienen id="wizard-step-N",
+    // solo la clase "wizard-step" y el atributo data-step="N". El selector
+    // anterior (getElementById) nunca encontraba nada, así que ningún paso
+    // recuperaba la clase "active" y el formulario entero desaparecía.
+    document.querySelector(`.wizard-step[data-step="${wizardStep}"]`)?.classList.add('active');
 
     document.querySelectorAll('.wizard-dot').forEach((dot, idx) => {
         dot.classList.toggle('bg-brandPurple', idx < wizardStep);
