@@ -622,6 +622,47 @@ function computeNutrition(user) {
 }
 
 // =========================================================================
+// SELECCIÓN INTELIGENTE DE EJERCICIOS POR DÍA
+// =========================================================================
+// Límite máximo de ejercicios por sesión: más de esto genera rutinas
+// excesivamente largas, mala adherencia y peor calidad de ejecución.
+const DAILY_EXERCISE_LIMIT = 6;
+
+// Elige, de un banco de ejercicios, un subconjunto equilibrado (máx. `count`)
+// agrupando por grupo muscular/categoría (campo "c") y tomando primero el
+// ejercicio de mayor gasto calórico (proxy de movimiento compuesto/principal)
+// de cada grupo, rotando entre grupos para maximizar la variedad muscular
+// sin sobrecargar el día con demasiados ejercicios.
+function selectSmartRoutine(exercisePool, count = DAILY_EXERCISE_LIMIT) {
+    if (!exercisePool || exercisePool.length === 0) return [];
+    if (exercisePool.length <= count) return exercisePool;
+
+    const groups = {};
+    exercisePool.forEach(ex => {
+        const key = ex.c || 'General';
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(ex);
+    });
+
+    // Dentro de cada grupo, los movimientos más completos (mayor "k") primero
+    Object.values(groups).forEach(list => list.sort((a, b) => (b.k || 0) - (a.k || 0)));
+
+    const groupKeys = Object.keys(groups);
+    const selected = [];
+    let round = 0;
+
+    while (selected.length < count && groupKeys.some(k => groups[k].length > round)) {
+        for (const key of groupKeys) {
+            if (selected.length >= count) break;
+            if (groups[key][round]) selected.push(groups[key][round]);
+        }
+        round++;
+    }
+
+    return selected;
+}
+
+// =========================================================================
 // GENERADOR DE RUTINA CON SELECCIÓN DE DÍAS DE DESCANSO
 // =========================================================================
 
@@ -641,24 +682,24 @@ function dynamicRoutineGenerator(days, focus, restDays = []) {
 
     if (days === 3) {
         if (workDays.length >= 3) {
-            structure[workDays[0]] = { focus: 'Bloque Enfoque A', exercises: repo.DiaA };
-            structure[workDays[1]] = { focus: 'Bloque Enfoque B', exercises: repo.DiaB };
-            structure[workDays[2]] = { focus: 'Estabilidad / HIIT', exercises: exerciseRepository.comun.hiit };
+            structure[workDays[0]] = { focus: 'Bloque Enfoque A', exercises: selectSmartRoutine(repo.DiaA) };
+            structure[workDays[1]] = { focus: 'Bloque Enfoque B', exercises: selectSmartRoutine(repo.DiaB) };
+            structure[workDays[2]] = { focus: 'Estabilidad / HIIT', exercises: selectSmartRoutine(exerciseRepository.comun.hiit) };
         }
     } else if (days === 4) {
         if (workDays.length >= 4) {
-            structure[workDays[0]] = { focus: 'Acondicionamiento Principal A', exercises: repo.DiaA };
-            structure[workDays[1]] = { focus: 'Bloque de Potencia HIIT', exercises: exerciseRepository.comun.hiit };
-            structure[workDays[2]] = { focus: 'Acondicionamiento Principal B', exercises: repo.DiaB };
-            structure[workDays[3]] = { focus: 'Hipertrofia Estricta', exercises: repo.DiaA.slice(0, 5) };
+            structure[workDays[0]] = { focus: 'Acondicionamiento Principal A', exercises: selectSmartRoutine(repo.DiaA) };
+            structure[workDays[1]] = { focus: 'Bloque de Potencia HIIT', exercises: selectSmartRoutine(exerciseRepository.comun.hiit) };
+            structure[workDays[2]] = { focus: 'Acondicionamiento Principal B', exercises: selectSmartRoutine(repo.DiaB) };
+            structure[workDays[3]] = { focus: 'Hipertrofia Estricta', exercises: selectSmartRoutine(repo.DiaA, 5) };
         }
     } else {
         if (workDays.length >= 5) {
-            structure[workDays[0]] = { focus: 'Bloque de Desarrollo I', exercises: repo.DiaA };
-            structure[workDays[1]] = { focus: 'Bloque de Desarrollo II', exercises: repo.DiaB };
-            structure[workDays[2]] = { focus: 'Quema / HIIT Complejo', exercises: exerciseRepository.comun.hiit };
-            structure[workDays[3]] = { focus: 'Volumen y Aislamiento', exercises: repo.DiaA.slice(0, 5) };
-            structure[workDays[4]] = { focus: 'Remate / Definición', exercises: repo.DiaB.slice(0, 5) };
+            structure[workDays[0]] = { focus: 'Bloque de Desarrollo I', exercises: selectSmartRoutine(repo.DiaA) };
+            structure[workDays[1]] = { focus: 'Bloque de Desarrollo II', exercises: selectSmartRoutine(repo.DiaB) };
+            structure[workDays[2]] = { focus: 'Quema / HIIT Complejo', exercises: selectSmartRoutine(exerciseRepository.comun.hiit) };
+            structure[workDays[3]] = { focus: 'Volumen y Aislamiento', exercises: selectSmartRoutine(repo.DiaA, 5) };
+            structure[workDays[4]] = { focus: 'Remate / Definición', exercises: selectSmartRoutine(repo.DiaB, 5) };
         }
     }
     return structure;
