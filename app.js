@@ -168,6 +168,9 @@ function profileRowToSessionState(row) {
         bodyType: row.body_type,
         focus: row.focus,
         goal: row.goal,
+        avatarUrl: row.avatar_url || null,
+        reminderEnabled: row.reminder_enabled || false,
+        reminderTime: row.reminder_time || '19:00',
         completedByDate: row.completed_by_date || {},
         waterByDate: row.water_by_date || {},
         weightLog: row.weight_log || [],
@@ -189,6 +192,9 @@ function sessionStateToProfileRow(state) {
         body_type: state.bodyType,
         focus: state.focus,
         goal: state.goal,
+        avatar_url: state.avatarUrl || null,
+        reminder_enabled: state.reminderEnabled || false,
+        reminder_time: state.reminderTime || '19:00',
         completed_by_date: state.completedByDate,
         water_by_date: state.waterByDate,
         weight_log: state.weightLog,
@@ -975,9 +981,7 @@ function buildUserWorkspace() {
     document.getElementById('quick-focus-span').textContent = focusText;
 
     const initials = sessionState.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'FI';
-    document.getElementById('user-avatar').textContent = initials;
-    document.getElementById('sidebar-avatar').textContent = initials;
-    document.getElementById('profile-big-avatar').textContent = initials;
+    renderAvatar(initials);
 
     const goalStr = sessionState.goal === 'gain' ? 'Superávit Muscular' : 'Déficit Calórico';
     document.getElementById('profile-meta').textContent = `${sessionState.bodyType} • ${focusText} • ${goalStr} • ${sessionState.weightKg}kg / ${sessionState.heightCm}cm`;
@@ -988,6 +992,8 @@ function buildUserWorkspace() {
     renderNutrition();
     renderWaterWidget();
     renderWeightChart();
+    renderReminderUI();
+    startReminderWatcher();
 
     document.getElementById('screen-login').classList.add('opacity-0');
     setTimeout(() => {
@@ -999,4 +1005,205 @@ function buildUserWorkspace() {
             lucide.createIcons();
         }, 50);
     }, 400);
+}
+// =========================================================================
+// AVATAR — mostrar iniciales o foto, y subirla a Supabase Storage
+// =========================================================================
+
+function renderAvatar(initials) {
+    const spots = [
+        { el: document.getElementById('user-avatar'), size: 'small' },
+        { el: document.getElementById('sidebar-avatar'), size: 'small' },
+        { el: document.getElementById('profile-big-avatar'), size: 'big' }
+    ];
+
+    spots.forEach(({ el }) => {
+        if (!el) return;
+        if (sessionState.avatarUrl) {
+            el.textContent = '';
+            el.style.backgroundImage = `url('${sessionState.avatarUrl}')`;
+            el.style.backgroundSize = 'cover';
+            el.style.backgroundPosition = 'center';
+        } else {
+            el.style.backgroundImage = '';
+            el.textContent = initials;
+        }
+    });
+}
+
+async function uploadAvatar(file) {
+    if (!file || !sessionState) return;
+    if (!file.type.startsWith('image/')) {
+        showToast('Selecciona un archivo de imagen válido.', 'error');
+        return;
+    }
+    if (file.size > 3 * 1024 * 1024) {
+        showToast('La imagen no puede pesar más de 3MB.', 'error');
+        return;
+    }
+
+    try {
+        const ext = file.name.split('.').pop();
+        const path = `${sessionState.id}/avatar.${ext}`;
+
+        const { error: uploadError } = await supabaseClient
+            .storage
+            .from('avatars')
+            .upload(path, file, { upsert: true });
+        if (uploadError) throw uploadError;
+
+        const { data: publicUrlData } = supabaseClient
+            .storage
+            .from('avatars')
+            .getPublicUrl(path);
+
+        // Le agregamos un timestamp para evitar que el navegador muestre la
+        // foto vieja cacheada cuando el usuario sube una nueva.
+        sessionState.avatarUrl = `${publicUrlData.publicUrl}?t=${Date.now()}`;
+
+        const { error: updateError } = await supabaseClient
+            .from('profiles')
+            .update({ avatar_url: sessionState.avatarUrl })
+            .eq('id', sessionState.id);
+        if (updateError) throw updateError;
+
+        const initials = sessionState.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'FI';
+        renderAvatar(initials);
+        showToast('Foto de perfil actualizada.', 'success');
+    } catch (err) {
+        console.error(err);
+        showToast(err.message || 'No se pudo subir la foto.', 'error');
+    }
+}
+
+document.getElementById('avatar-upload-input')?.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    uploadAvatar(file);
+});
+
+// =========================================================================
+// EDITAR PERFIL
+// =========================================================================
+
+function openEditProfile() {
+    if (!sessionState) return;
+    document.getElementById('edit-name').value = sessionState.name;
+    document.getElementById('edit-age').value = sessionState.age;
+    document.getElementById('edit-weight').value = sessionState.weightKg;
+    document.getElementById('edit-height').value = sessionState.heightCm;
+    document.getElementById('edit-gender').value = sessionState.gender;
+    document.getElementById('edit-body-type').value = sessionState.bodyType;
+    document.getElementById('edit-days-count').value = sessionState.daysCount;
+    document.getElementById('edit-focus').value = sessionState.focus;
+    document.querySelector(`input[name="edit-goal"][value="${sessionState.goal}"]`).checked = true;
+
+    document.getElementById('edit-profile-modal').classList.remove('hidden');
+}
+
+function closeEditProfile() {
+    document.getElementById('edit-profile-modal').classList.add('hidden');
+}
+
+const editProfileForm = document.getElementById('edit-profile-form');
+editProfileForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const submitBtn = document.getElementById('edit-profile-submit-btn');
+    submitBtn.disabled = true;
+
+    try {
+        sessionState.name = document.getElementById('edit-name').value.trim();
+        sessionState.age = parseInt(document.getElementById('edit-age').value);
+        sessionState.weightKg = parseFloat(document.getElementById('edit-weight').value);
+        sessionState.heightCm = parseFloat(document.getElementById('edit-height').value);
+        sessionState.gender = document.getElementById('edit-gender').value;
+        sessionState.bodyType = document.getElementById('edit-body-type').value;
+        sessionState.daysCount = parseInt(document.getElementById('edit-days-count').value);
+        sessionState.focus = document.getElementById('edit-focus').value;
+        sessionState.goal = document.querySelector('input[name="edit-goal"]:checked').value;
+
+        await saveSession();
+        closeEditProfile();
+        buildUserWorkspace();
+        showToast('Perfil actualizado.', 'success');
+    } catch (err) {
+        console.error(err);
+        showToast('No se pudo actualizar tu perfil.', 'error');
+    } finally {
+        submitBtn.disabled = false;
+    }
+});
+
+// =========================================================================
+// RECORDATORIOS — notificación local diaria mientras la app está abierta
+// =========================================================================
+// Nota: al ser un PWA sin servidor de push propio, esto revisa la hora cada
+// minuto MIENTRAS la app/pestaña está abierta (o corriendo en segundo plano
+// como PWA instalada). No dispara si el usuario cierra la app por completo.
+// Para push real con la app cerrada se necesitaría un backend con VAPID keys.
+
+let reminderIntervalId = null;
+
+function renderReminderUI() {
+    const toggle = document.getElementById('reminder-toggle');
+    const timeInput = document.getElementById('reminder-time-input');
+    if (!toggle || !timeInput || !sessionState) return;
+
+    toggle.checked = !!sessionState.reminderEnabled;
+    timeInput.value = sessionState.reminderTime || '19:00';
+}
+
+async function handleReminderToggle(checked) {
+    if (checked && Notification.permission !== 'granted') {
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+            showToast('Necesitas permitir notificaciones en tu navegador para activar esto.', 'error');
+            document.getElementById('reminder-toggle').checked = false;
+            return;
+        }
+    }
+
+    sessionState.reminderEnabled = checked;
+    await saveSession();
+    showToast(checked ? 'Recordatorios activados.' : 'Recordatorios desactivados.', 'success');
+}
+
+async function handleReminderTimeChange(value) {
+    sessionState.reminderTime = value;
+    await saveSession();
+    showToast('Hora del recordatorio actualizada.', 'success');
+}
+
+document.getElementById('reminder-toggle')?.addEventListener('change', (e) => handleReminderToggle(e.target.checked));
+document.getElementById('reminder-time-input')?.addEventListener('change', (e) => handleReminderTimeChange(e.target.value));
+
+function startReminderWatcher() {
+    if (reminderIntervalId) clearInterval(reminderIntervalId);
+    reminderIntervalId = setInterval(checkReminder, 60 * 1000);
+    checkReminder();
+}
+
+function checkReminder() {
+    if (!sessionState || !sessionState.reminderEnabled) return;
+    if (Notification.permission !== 'granted') return;
+
+    const now = new Date();
+    const currentHHMM = now.toTimeString().slice(0, 5);
+    if (currentHHMM !== sessionState.reminderTime) return;
+
+    const today = todayKey();
+    const alreadyNotifiedKey = `tnyfit_reminder_sent_${today}`;
+    if (localStorage.getItem(alreadyNotifiedKey)) return;
+
+    const completedToday = sessionState.completedByDate[today] || [];
+    const generatedPlan = dynamicRoutineGenerator(sessionState.daysCount, sessionState.focus);
+    const todayData = generatedPlan[currentDayName] || generatedPlan['Lunes'];
+    const totalExercises = todayData.exercises.filter(ex => ex.id !== 'rest').length;
+
+    if (totalExercises > 0 && completedToday.length >= totalExercises) return; // ya completó todo
+
+    new Notification('TNY FIT', {
+        body: '¡No olvides completar tu rutina de hoy! 💪',
+        icon: 'TNY SIN FONDO.png'
+    });
+    localStorage.setItem(alreadyNotifiedKey, '1');
 }
