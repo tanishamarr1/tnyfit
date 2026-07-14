@@ -1070,14 +1070,20 @@ async function updateRestDay(checkbox) {
 // =========================================================================
 
 function renderAvatar(initials) {
-    const avatarContainer = document.getElementById('profile-avatar');
-    if (!avatarContainer) return;
-    
-    if (sessionState.avatarUrl && sessionState.avatarUrl.startsWith('http')) {
-        avatarContainer.innerHTML = `<img src="${sessionState.avatarUrl}" alt="Avatar" class="w-full h-full object-cover rounded-full">`;
-    } else {
-        avatarContainer.textContent = initials;
-    }
+    // FIX: la función original solo intentaba actualizar el elemento con
+    // id="profile-avatar", que no existe en el HTML. Por eso la foto se
+    // subía correctamente a Supabase Storage pero nunca se veía reflejada
+    // en pantalla. Ahora se actualizan todos los avatares reales del DOM.
+    const avatarIds = ['sidebar-avatar', 'user-avatar', 'profile-big-avatar', 'edit-profile-avatar-preview'];
+    avatarIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (sessionState.avatarUrl && sessionState.avatarUrl.startsWith('http')) {
+            el.innerHTML = `<img src="${sessionState.avatarUrl}" alt="Avatar" class="w-full h-full object-cover rounded-full">`;
+        } else {
+            el.textContent = initials;
+        }
+    });
 }
 
 async function uploadAvatar(file) {
