@@ -3,8 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TNY FIT</title>
-      <link rel="icon" href="TNY SIN FONDO.ico" type="image/x-icon">
+    <meta name="description" content="TNY FIT — Tu ecosistema de entrenamiento y nutrición adaptativo, calculado según tu biometría real.">
+    <meta name="theme-color" content="#0A0A0A">
+    <title>Tnyfit </title>
+    <link rel="icon" href="TNY SIN FONDO.ico" type="image/x-icon">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="TNY SIN FONDO.png">
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="TNY FIT">
+    <meta property="og:description" content="Plan de entrenamiento y nutrición adaptativo de alta precisión.">
+    <meta property="og:image" content="TNY SIN FONDO.png">
+    <meta property="og:type" content="website">
+
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -12,7 +23,7 @@
             theme: {
                 extend: {
                     colors: {
-                        brand: '#CCFF00', 
+                        brand: '#CCFF00',
                         brandPurple: '#A855F7',
                         darkBg: '#0A0A0A',
                         cardBg: '#141414',
@@ -24,107 +35,221 @@
     </script>
     <!-- Lucide Icons CDN -->
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Supabase SDK -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        
+
         .tab-content { display: none !important; }
         .tab-content.active { display: flex !important; }
+
+        .wizard-step { display: none; }
+        .wizard-step.active { display: block; }
+
+        @keyframes toast-in {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .toast-anim { animation: toast-in 0.25s ease-out; }
+
+        @media (prefers-reduced-motion: reduce) {
+            * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+        }
     </style>
 </head>
 <body class="h-full bg-darkBg text-neutral-100 antialiased selection:bg-brandPurple selection:text-white">
 
+    <!-- TOASTS -->
+    <div id="toast-container" class="fixed bottom-4 right-4 left-4 sm:left-auto z-[100] flex flex-col gap-2 items-stretch sm:items-end pointer-events-none"></div>
+
+    <!-- LOADING (verificando sesión con Supabase) -->
+    <div id="auth-loading" class="fixed inset-0 z-[70] bg-darkBg flex flex-col items-center justify-center gap-4">
+        <img src="TNY SIN FONDO.png" alt="TNY FIT" class="h-12 w-auto object-contain opacity-80">
+        <div class="w-6 h-6 border-2 border-neutral-800 border-t-brandPurple rounded-full animate-spin"></div>
+    </div>
+
     <!-- CONTAINER PRINCIPAL -->
     <div class="w-full h-full flex flex-col md:flex-row overflow-hidden">
-        
-        <!-- ================= PANTALLA DE ACCESO (LOG IN + REGISTRO BD HIPER-PERSONALIZADO) ================= -->
+
+        <!-- ================= PANTALLA DE ACCESO ================= -->
         <section id="screen-login" class="fixed inset-0 z-50 bg-darkBg flex items-center justify-center p-4 md:p-6 opacity-100 transition-opacity duration-500 overflow-y-auto hide-scrollbar">
-            <div class="w-full max-w-xl bg-cardBg border border-neutral-800 rounded-[32px] p-6 md:p-8 space-y-6 shadow-2xl my-auto">
+
+            <!-- ======== LOGIN (usuario existente) ======== -->
+            <div id="panel-signin" class="w-full max-w-md bg-cardBg border border-neutral-800 rounded-[32px] p-6 md:p-8 space-y-6 shadow-2xl my-auto">
+                <div class="flex flex-col items-center justify-center text-center space-y-2">
+                    <img src="TNY SIN FONDO.png" alt="TNY FIT Logo" class="h-16 w-auto object-contain mb-2">
+                    <h1 class="text-xl md:text-2xl font-bold tracking-tight text-white">Bienvenido de nuevo</h1>
+                    <p class="text-neutral-400 text-xs">Inicia sesión para continuar con tu ecosistema.</p>
+                </div>
+
+                <form id="signin-form" class="space-y-4">
+                    <div>
+                        <label class="block text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-1.5">Correo Electrónico</label>
+                        <input type="email" id="signin-email" required autocomplete="username" class="w-full bg-neutral-900 border border-neutral-800 rounded-2xl px-4 py-3 text-white placeholder-neutral-600 focus:outline-none focus:border-brandPurple transition-colors text-sm" placeholder="nombre@correo.com">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-1.5">Contraseña</label>
+                        <input type="password" id="signin-password" required autocomplete="current-password" class="w-full bg-neutral-900 border border-neutral-800 rounded-2xl px-4 py-3 text-white placeholder-neutral-600 focus:outline-none focus:border-brandPurple transition-colors text-sm" placeholder="••••••••">
+                    </div>
+                    <button type="submit" class="w-full bg-brandPurple text-white font-semibold rounded-2xl py-3.5 mt-2 hover:opacity-90 active:scale-[0.99] transition-all flex items-center justify-center gap-2 shadow-[0_4px_24px_rgba(168,85,247,0.2)] text-sm">
+                        <span>Iniciar Sesión</span>
+                        <i data-lucide="log-in" class="w-4 h-4"></i>
+                    </button>
+                    <div class="flex items-center justify-between text-[11px]">
+                        <button type="button" onclick="handleForgotPassword()" class="text-neutral-500 hover:text-neutral-300 hover:underline">¿Olvidaste tu contraseña?</button>
+                        <button type="button" onclick="goToRegister()" class="text-brandPurple font-semibold hover:underline">Crear mi Ecosistema</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- ======== REGISTRO (wizard multi-paso) ======== -->
+            <div id="panel-register" class="hidden w-full max-w-xl bg-cardBg border border-neutral-800 rounded-[32px] p-6 md:p-8 space-y-6 shadow-2xl my-auto">
                 <div class="flex flex-col items-center justify-center text-center space-y-2">
                     <img src="TNY SIN FONDO.png" alt="TNY FIT Logo" class="h-16 w-auto object-contain mb-2">
                     <h1 class="text-xl md:text-2xl font-bold tracking-tight text-white">Configuración de tu Perfil</h1>
                     <p class="text-neutral-400 text-xs">Cuéntanos sobre ti para estructurar tu plan adaptativo de alta precisión.</p>
                 </div>
 
-                <form id="login-form" class="space-y-4">
-                    <!-- Fila 1: Datos Personales -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-1.5">Nombre Completo</label>
-                            <input type="text" id="user-name" required class="w-full bg-neutral-900 border border-neutral-800 rounded-2xl px-4 py-3 text-white placeholder-neutral-600 focus:outline-none focus:border-brandPurple transition-colors text-sm" placeholder="Ej. Maria Pérez">
-                        </div>
-                        <div>
-                            <label class="block text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-1.5">Correo Electrónico</label>
-                            <input type="email" id="user-email" required class="w-full bg-neutral-900 border border-neutral-800 rounded-2xl px-4 py-3 text-white placeholder-neutral-600 focus:outline-none focus:border-brandPurple transition-colors text-sm" placeholder="nombre@correo.com">
+                <!-- Indicador de pasos -->
+                <div class="flex items-center justify-center gap-2" id="wizard-dots">
+                    <span class="wizard-dot h-1.5 rounded-full bg-brandPurple w-8 transition-all"></span>
+                    <span class="wizard-dot h-1.5 rounded-full bg-neutral-800 w-4 transition-all"></span>
+                    <span class="wizard-dot h-1.5 rounded-full bg-neutral-800 w-4 transition-all"></span>
+                    <span class="wizard-dot h-1.5 rounded-full bg-neutral-800 w-4 transition-all"></span>
+                </div>
+
+                <form id="register-form" class="space-y-4" novalidate>
+
+                    <!-- PASO 1: Cuenta -->
+                    <div class="wizard-step active" data-step="1">
+                        <p class="text-[10px] font-bold uppercase tracking-wider text-brandPurple mb-3">Paso 1 · Cuenta</p>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-1.5">Nombre Completo</label>
+                                <input type="text" id="user-name" required class="w-full bg-neutral-900 border border-neutral-800 rounded-2xl px-4 py-3 text-white placeholder-neutral-600 focus:outline-none focus:border-brandPurple transition-colors text-sm" placeholder="Ej. Maria Pérez">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-1.5">Correo Electrónico</label>
+                                <input type="email" id="user-email" required autocomplete="username" class="w-full bg-neutral-900 border border-neutral-800 rounded-2xl px-4 py-3 text-white placeholder-neutral-600 focus:outline-none focus:border-brandPurple transition-colors text-sm" placeholder="nombre@correo.com">
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-1.5">Contraseña</label>
+                                    <input type="password" id="user-password" required minlength="6" autocomplete="new-password" class="w-full bg-neutral-900 border border-neutral-800 rounded-2xl px-4 py-3 text-white placeholder-neutral-600 focus:outline-none focus:border-brandPurple transition-colors text-sm" placeholder="Mín. 6 caracteres">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-1.5">Confirmar</label>
+                                    <input type="password" id="user-password-confirm" required autocomplete="new-password" class="w-full bg-neutral-900 border border-neutral-800 rounded-2xl px-4 py-3 text-white placeholder-neutral-600 focus:outline-none focus:border-brandPurple transition-colors text-sm" placeholder="Repite tu contraseña">
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Fila 2: Biometría y Días -->
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <div>
-                            <label class="block text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-1.5">Género</label>
-                            <select id="user-gender" class="w-full bg-neutral-900 border border-neutral-800 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-brandPurple transition-colors text-sm cursor-pointer">
-                                <option value="Mujer">Mujer</option>
-                                <option value="Hombre">Hombre</option>
-                                <option value="No decir">Prefiero no decirlo</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-1.5">Frecuencia Semanal</label>
-                            <select id="training-days-count" class="w-full bg-neutral-900 border border-neutral-800 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-brandPurple transition-colors text-sm cursor-pointer">
-                                <option value="3">3 Días</option>
-                                <option value="4">4 Días</option>
-                                <option value="5" selected>5 Días</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-1.5">Somatotipo</label>
-                            <select id="body-type" class="w-full bg-neutral-900 border border-neutral-800 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-brandPurple transition-colors text-sm cursor-pointer">
-                                <option value="Ectomorfo">Ectomorfo</option>
-                                <option value="Mesomorfo" selected>Mesomorfo</option>
-                                <option value="Endomorfo">Endomorfo</option>
-                            </select>
+                    <!-- PASO 2: Biometría -->
+                    <div class="wizard-step" data-step="2">
+                        <p class="text-[10px] font-bold uppercase tracking-wider text-brandPurple mb-3">Paso 2 · Tu Cuerpo</p>
+                        <div class="space-y-4">
+                            <div class="grid grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-1.5">Edad</label>
+                                    <input type="number" id="user-age" required min="14" max="90" class="w-full bg-neutral-900 border border-neutral-800 rounded-2xl px-3 py-3 text-white placeholder-neutral-600 focus:outline-none focus:border-brandPurple transition-colors text-sm" placeholder="25">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-1.5">Peso (kg)</label>
+                                    <input type="number" id="user-weight" required min="30" max="300" step="0.1" class="w-full bg-neutral-900 border border-neutral-800 rounded-2xl px-3 py-3 text-white placeholder-neutral-600 focus:outline-none focus:border-brandPurple transition-colors text-sm" placeholder="65">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-1.5">Altura (cm)</label>
+                                    <input type="number" id="user-height" required min="120" max="230" class="w-full bg-neutral-900 border border-neutral-800 rounded-2xl px-3 py-3 text-white placeholder-neutral-600 focus:outline-none focus:border-brandPurple transition-colors text-sm" placeholder="170">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-1.5">Género</label>
+                                    <select id="user-gender" class="w-full bg-neutral-900 border border-neutral-800 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-brandPurple transition-colors text-sm cursor-pointer">
+                                        <option value="Mujer">Mujer</option>
+                                        <option value="Hombre">Hombre</option>
+                                        <option value="No decir">Prefiero no decirlo</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-1.5">Somatotipo</label>
+                                    <select id="body-type" class="w-full bg-neutral-900 border border-neutral-800 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-brandPurple transition-colors text-sm cursor-pointer">
+                                        <option value="Ectomorfo">Ectomorfo</option>
+                                        <option value="Mesomorfo" selected>Mesomorfo</option>
+                                        <option value="Endomorfo">Endomorfo</option>
+                                    </select>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Fila 3: Enfoque de Entrenamiento Principal -->
-                    <div>
-                        <label class="block text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-1.5">¿Qué buscas priorizar o trabajar realmente?</label>
-                        <select id="training-focus" class="w-full bg-neutral-900 border border-neutral-800 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-brandPurple transition-colors text-sm cursor-pointer">
-                            <option value="inferior" selected>Tren Inferior (Enfoque en Piernas, Glúteos y Tonificación)</option>
-                            <option value="superior">Tren Superior (Enfoque en Espalda, Hombros, Brazos y Pecho)</option>
-                            <option value="balanceado">Estética Balanceada (Full Body / Proporción General)</option>
-                        </select>
+                    <!-- PASO 3: Entrenamiento -->
+                    <div class="wizard-step" data-step="3">
+                        <p class="text-[10px] font-bold uppercase tracking-wider text-brandPurple mb-3">Paso 3 · Entrenamiento</p>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-1.5">Frecuencia Semanal</label>
+                                <select id="training-days-count" class="w-full bg-neutral-900 border border-neutral-800 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-brandPurple transition-colors text-sm cursor-pointer">
+                                    <option value="3">3 Días</option>
+                                    <option value="4">4 Días</option>
+                                    <option value="5" selected>5 Días</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-1.5">¿Qué buscas priorizar o trabajar realmente?</label>
+                                <select id="training-focus" class="w-full bg-neutral-900 border border-neutral-800 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-brandPurple transition-colors text-sm cursor-pointer">
+                                    <option value="inferior" selected>Tren Inferior (Enfoque en Piernas, Glúteos y Tonificación)</option>
+                                    <option value="superior">Tren Superior (Enfoque en Espalda, Hombros, Brazos y Pecho)</option>
+                                    <option value="balanceado">Estética Balanceada (Full Body / Proporción General)</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- Fila 4: Objetivo Metabólico -->
-                    <div>
-                        <label class="block text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-1.5">Objetivo Corpóreo</label>
+                    <!-- PASO 4: Objetivo -->
+                    <div class="wizard-step" data-step="4">
+                        <p class="text-[10px] font-bold uppercase tracking-wider text-brandPurple mb-3">Paso 4 · Objetivo</p>
                         <div class="grid grid-cols-2 gap-3">
-                            <label class="relative flex flex-col items-center justify-center p-3 rounded-2xl bg-neutral-900 border border-neutral-800 cursor-pointer has-[:checked]:border-brandPurple has-[:checked]:bg-brandPurple/5 transition-all group text-center">
+                            <label class="relative flex flex-col items-center justify-center p-4 rounded-2xl bg-neutral-900 border border-neutral-800 cursor-pointer has-[:checked]:border-brandPurple has-[:checked]:bg-brandPurple/5 transition-all group text-center">
                                 <input type="radio" name="fitness-goal" value="loss" checked class="sr-only">
                                 <span class="text-xs font-semibold text-neutral-300 group-has-[:checked]:text-brandPurple">Déficit Calórico (Definición)</span>
                             </label>
-                            <label class="relative flex flex-col items-center justify-center p-3 rounded-2xl bg-neutral-900 border border-neutral-800 cursor-pointer has-[:checked]:border-brandPurple has-[:checked]:bg-brandPurple/5 transition-all group text-center">
+                            <label class="relative flex flex-col items-center justify-center p-4 rounded-2xl bg-neutral-900 border border-neutral-800 cursor-pointer has-[:checked]:border-brandPurple has-[:checked]:bg-brandPurple/5 transition-all group text-center">
                                 <input type="radio" name="fitness-goal" value="gain" class="sr-only">
                                 <span class="text-xs font-semibold text-neutral-300 group-has-[:checked]:text-brandPurple">Superávit Muscular (Volumen)</span>
                             </label>
                         </div>
+                        <p class="text-[11px] text-neutral-500 mt-4 leading-relaxed">Con estos datos calcularemos tu gasto calórico real (Mifflin-St Jeor) y tus macros personalizados — no plantillas genéricas.</p>
                     </div>
 
-                    <button type="submit" class="w-full bg-brandPurple text-white font-semibold rounded-2xl py-3.5 mt-2 hover:opacity-90 active:scale-[0.99] transition-all flex items-center justify-center gap-2 shadow-[0_4px_24px_rgba(168,85,247,0.2)] text-sm">
-                        <span>Generar mi Ecosistema TNY</span>
-                        <i data-lucide="sparkles" class="w-4 h-4"></i>
-                    </button>
+                    <!-- Navegación del wizard -->
+                    <div class="flex items-center gap-3 pt-2">
+                        <button type="button" id="wizard-back-btn" onclick="wizardBack()" class="hidden flex-1 bg-neutral-900 border border-neutral-800 text-neutral-300 font-semibold rounded-2xl py-3.5 hover:bg-neutral-800 transition-all text-sm">
+                            Atrás
+                        </button>
+                        <button type="button" id="wizard-next-btn" onclick="wizardNext()" class="flex-1 bg-brandPurple text-white font-semibold rounded-2xl py-3.5 hover:opacity-90 active:scale-[0.99] transition-all flex items-center justify-center gap-2 shadow-[0_4px_24px_rgba(168,85,247,0.2)] text-sm">
+                            <span>Continuar</span>
+                            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                        </button>
+                        <button type="submit" id="wizard-submit-btn" class="hidden flex-1 bg-brandPurple text-white font-semibold rounded-2xl py-3.5 hover:opacity-90 active:scale-[0.99] transition-all items-center justify-center gap-2 shadow-[0_4px_24px_rgba(168,85,247,0.2)] text-sm">
+                            <span>Generar mi Ecosistema TNY</span>
+                            <i data-lucide="sparkles" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                    <p class="text-center text-[11px] text-neutral-500">¿Ya tienes perfil?
+                        <button type="button" onclick="goToSignin()" class="text-brandPurple font-semibold hover:underline">Iniciar sesión</button>
+                    </p>
                 </form>
             </div>
         </section>
 
         <!-- ================= WORKSPACE DISTRIBUIDO (DASHBOARD) ================= -->
         <section id="screen-dashboard" class="hidden w-full h-full flex flex-col md:flex-row opacity-0 transition-opacity duration-500 overflow-hidden">
-            
+
             <!-- SIDEBAR -->
             <aside class="hidden md:flex flex-col justify-between w-64 bg-cardBg border-r border-neutral-900 p-6 shrink-0">
                 <div class="space-y-8">
@@ -152,23 +277,29 @@
                     </nav>
                 </div>
 
-                <div class="pt-4 border-t border-neutral-900 flex items-center justify-between">
-                    <div class="flex items-center gap-2.5 overflow-hidden">
-                        <div id="sidebar-avatar" class="w-8 h-8 rounded-full bg-neutral-900 border border-neutral-800 flex items-center justify-center text-brandPurple text-xs font-bold shrink-0">--</div>
-                        <div class="truncate">
-                            <p id="sidebar-user-name" class="text-xs font-semibold text-neutral-300 truncate">Usuario</p>
-                            <p id="sidebar-user-email" class="text-[9px] text-neutral-500 truncate">correo@tny.com</p>
-                        </div>
-                    </div>
-                    <button onclick="logout()" class="p-1.5 text-neutral-500 hover:text-red-400 rounded-lg transition-colors shrink-0">
-                        <i data-lucide="log-out" class="w-4 h-4"></i>
+                <div class="space-y-3">
+                    <button id="pwa-install-btn" onclick="triggerInstall()" class="hidden w-full items-center justify-center gap-2 bg-neutral-900 border border-neutral-800 text-neutral-300 hover:text-white text-[10px] font-semibold uppercase tracking-wider rounded-xl py-2.5 transition-colors">
+                        <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                        <span>Instalar App</span>
                     </button>
+                    <div class="pt-4 border-t border-neutral-900 flex items-center justify-between">
+                        <div class="flex items-center gap-2.5 overflow-hidden">
+                            <div id="sidebar-avatar" class="w-8 h-8 rounded-full bg-neutral-900 border border-neutral-800 flex items-center justify-center text-brandPurple text-xs font-bold shrink-0">--</div>
+                            <div class="truncate">
+                                <p id="sidebar-user-name" class="text-xs font-semibold text-neutral-300 truncate">Usuario</p>
+                                <p id="sidebar-user-email" class="text-[9px] text-neutral-500 truncate">correo@tny.com</p>
+                            </div>
+                        </div>
+                        <button onclick="logout()" class="p-1.5 text-neutral-500 hover:text-red-400 rounded-lg transition-colors shrink-0">
+                            <i data-lucide="log-out" class="w-4 h-4"></i>
+                        </button>
+                    </div>
                 </div>
             </aside>
 
             <!-- CONTENEDOR DE CONTENIDO PRINCIPAL -->
             <div class="flex-grow flex flex-col h-full overflow-hidden w-full">
-                
+
                 <!-- TOP HEADER -->
                 <header class="flex justify-between items-center px-6 py-4 bg-darkBg border-b border-neutral-900/60 z-10 w-full shrink-0">
                     <div class="flex items-center gap-3">
@@ -191,11 +322,11 @@
 
                 <!-- VISTAS DE LAS PESTAÑAS -->
                 <div id="main-scroll-container" class="flex-grow overflow-y-auto p-6 pb-24 md:pb-6 hide-scrollbar w-full max-w-7xl mx-auto">
-                    
+
                     <!-- TAB 1: INICIO -->
                     <div id="tab-inicio" class="tab-content active flex-col space-y-6 w-full">
                         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-                            
+
                             <!-- Widget Métricas -->
                             <div class="space-y-4 lg:col-span-1">
                                 <div class="p-6 rounded-3xl bg-cardBg border border-neutral-800 relative overflow-hidden shadow-xl">
@@ -221,6 +352,22 @@
                                 <div class="p-5 rounded-2xl bg-cardBg border border-neutral-800/80">
                                     <span class="text-[10px] font-bold text-brandPurple uppercase tracking-wider block mb-1">🎯 Enfoque Biológico</span>
                                     <p class="text-xs text-neutral-300 leading-relaxed">Plan diseñado meticulosamente para <span id="quick-gender-span" class="text-white font-semibold">--</span> con prioridad en <span id="quick-focus-span" class="text-brandPurple font-semibold">--</span>.</p>
+                                </div>
+
+                                <!-- Widget de Agua -->
+                                <div class="p-5 rounded-2xl bg-cardBg border border-neutral-800/80">
+                                    <div class="flex justify-between items-center mb-3">
+                                        <span class="text-[10px] font-bold text-brandPurple uppercase tracking-wider flex items-center gap-1.5">
+                                            <i data-lucide="droplets" class="w-3.5 h-3.5"></i> Hidratación
+                                        </span>
+                                        <span id="water-count-label" class="text-[10px] text-neutral-400 font-mono">0 / 0 ml</span>
+                                    </div>
+                                    <div class="w-full bg-neutral-900 h-1.5 rounded-full overflow-hidden mb-3">
+                                        <div id="water-bar-fill" class="bg-sky-400 h-full w-0 transition-all duration-500 ease-out"></div>
+                                    </div>
+                                    <button onclick="addWater(250)" class="w-full bg-neutral-900 border border-neutral-800 hover:border-sky-400/50 text-neutral-300 hover:text-sky-300 text-xs font-semibold rounded-xl py-2.5 transition-colors flex items-center justify-center gap-1.5">
+                                        <i data-lucide="plus" class="w-3.5 h-3.5"></i> Agregar 250ml
+                                    </button>
                                 </div>
                             </div>
 
@@ -258,6 +405,7 @@
                                 <div class="bg-neutral-950 p-4 rounded-xl border border-neutral-900 text-center">
                                     <span class="text-[10px] uppercase text-neutral-500 block">Total Diario Estimado</span>
                                     <p id="total-macro-kcal" class="text-xl font-bold text-white mt-1">--</p>
+                                    <p id="total-macro-detail" class="text-[10px] text-neutral-500 mt-1">--</p>
                                 </div>
                             </div>
 
@@ -282,16 +430,30 @@
                             </div>
                         </div>
 
-                        <div class="p-5 rounded-2xl bg-cardBg border border-neutral-800 space-y-3">
+                        <!-- Registro de peso + gráfico histórico -->
+                        <div class="p-5 rounded-2xl bg-cardBg border border-neutral-800 space-y-4">
                             <div class="flex justify-between items-center">
-                                <span class="text-xs font-bold uppercase tracking-wider text-neutral-400">Usuarios en Base de Datos Local (IndexedDB)</span>
+                                <span class="text-xs font-bold uppercase tracking-wider text-neutral-400">Evolución de Peso</span>
+                                <span id="weight-current-label" class="text-xs font-mono text-brandPurple">-- kg</span>
                             </div>
-                            <div class="max-h-40 overflow-y-auto border border-neutral-900 rounded-xl bg-neutral-950 divide-y divide-neutral-900 hide-scrollbar" id="db-users-list"></div>
+                            <div id="weight-chart-container" class="w-full"></div>
+                            <form id="weight-log-form" class="flex items-center gap-2">
+                                <input type="number" step="0.1" min="30" max="300" id="weight-log-input" required placeholder="Nuevo peso (kg)" class="flex-grow bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-2.5 text-white placeholder-neutral-600 focus:outline-none focus:border-brandPurple transition-colors text-sm">
+                                <button type="submit" class="bg-brandPurple text-white text-xs font-semibold rounded-xl px-4 py-2.5 hover:opacity-90 transition-all shrink-0">Registrar</button>
+                            </form>
+                        </div>
+
+                        <div class="p-5 rounded-2xl bg-cardBg border border-neutral-800 space-y-3">
+                            <div class="flex items-center gap-2">
+                                <i data-lucide="cloud-check" class="w-4 h-4 text-brandPurple"></i>
+                                <span class="text-xs font-bold uppercase tracking-wider text-neutral-400">Sincronización en la Nube</span>
+                            </div>
+                            <p class="text-[11px] text-neutral-400 leading-relaxed">Tu perfil, rutina, nutrición e historial están guardados de forma segura en tu cuenta y se sincronizan automáticamente en cualquier dispositivo donde inicies sesión.</p>
                         </div>
 
                         <div class="bg-cardBg border border-neutral-800 rounded-2xl divide-y divide-neutral-900 overflow-hidden shadow-lg">
                             <button onclick="logout()" class="w-full p-4 flex justify-between items-center text-left text-red-400 hover:bg-red-500/5 transition-colors">
-                                <span class="text-xs font-medium">Registrar nuevo perfil / Cerrar Sesión</span>
+                                <span class="text-xs font-medium">Cerrar Sesión</span>
                                 <i data-lucide="log-out" class="w-4 h-4"></i>
                             </button>
                         </div>
@@ -324,411 +486,7 @@
 
     </div>
 
-    <!-- SCRIPT DE INTELIGENCIA DE DATOS -->
-    <script>
-        // BANCO DE EJERCICIOS CLASIFICADOS POR ENFOQUE EXPLICITO (MÍNIMO 5 - MÁXIMO 7 POR DÍA)
-        const exerciseRepository = {
-            inferior: {
-                'DiaA': [
-                    { id: 'inf1', t: 'Sentadilla Goblet Profunda', c: 'Cuádriceps/Glúteos', d: '4 x 10-12 reps' },
-                    { id: 'inf2', t: 'Hip Thrust con Barra con Pausa', c: 'Glúteo Mayor', d: '4 x 12 reps (2s contracción)' },
-                    { id: 'inf3', t: 'Peso Muerto Rumano con Mancuerna', c: 'Isquiotibiales', d: '4 x 10 reps' },
-                    { id: 'inf4', t: 'Prensa Inclinada a Una Sola Pierna', c: 'Tren Inferior', d: '3 x 12 reps por lado' },
-                    { id: 'inf5', t: 'Abducciones en Polea o Máquina', c: 'Glúteo Medio', d: '3 x 15 reps' },
-                    { id: 'inf6', t: 'Elevación de Pantorrillas Sentado', c: 'Sóleo', d: '3 x 15 reps' }
-                ],
-                'DiaB': [
-                    { id: 'inf7', t: 'Zancadas Búlgaras Enfoque Glúteo', c: 'Glúteos/Isquios', d: '3 x 10 reps por pierna' },
-                    { id: 'inf8', t: 'Curl de Piernas Acostado', c: 'Isquiotibiales', d: '4 x 12 reps' },
-                    { id: 'inf9', t: 'Extensiones de Cuádriceps', c: 'Cuádriceps Aislando', d: '3 x 15 reps Drop-set' },
-                    { id: 'inf10', t: 'Patadas de Glúteo en Polea Baja', c: 'Glúteo Superior', d: '4 x 12 reps' },
-                    { id: 'inf11', t: 'Plancha Abdominal de Estabilidad', c: 'Core', d: '3 x 1 minuto' }
-                ]
-            },
-            superior: {
-                'DiaA': [
-                    { id: 'sup1', t: 'Press de Banca Plano con Barra', c: 'Pectoral', d: '4 x 8 reps' },
-                    { id: 'sup2', t: 'Remo con Barra en Pronación', c: 'Dorsales/Espalda', d: '4 x 8 reps' },
-                    { id: 'sup3', t: 'Press Militar con Mancuernas', c: 'Hombro Anterior', d: '3 x 10 reps' },
-                    { id: 'sup4', t: 'Jalón al Pecho Agarre Neutro', c: 'Amplitud Dorsal', d: '3 x 12 reps' },
-                    { id: 'sup5', t: 'Elevaciones Laterales Estrictas', c: 'Hombro Medio', d: '4 x 12-15 reps' },
-                    { id: 'sup6', t: 'Fondos en Paralelas para Tríceps', c: 'Brazos', d: '3 x max reps' }
-                ],
-                'DiaB': [
-                    { id: 'sup7', t: 'Press Inclinado con Mancuernas', c: 'Pectoral Superior', d: '4 x 10 reps' },
-                    { id: 'sup8', t: 'Remo Gironda en Polea Baja', c: 'Densidad de Espalda', d: '4 x 10 reps' },
-                    { id: 'sup9', t: 'Pájaros con Mancuerna (Deltoides Post)', c: 'Hombro Posterior', d: '3 x 15 reps' },
-                    { id: 'sup10', t: 'Curl de Bíceps Alterno con Supinación', c: 'Bíceps', d: '3 x 12 reps' },
-                    { id: 'sup11', t: 'Extensiones de Tríceps sobre la Cabeza', c: 'Tríceps Cabeza Larga', d: '3 x 12 reps' }
-                ]
-            },
-            balanceado: {
-                'DiaA': [
-                    { id: 'bal1', t: 'Sentadilla Libre con Barra', c: 'Full Body / Piernas', d: '4 x 8 reps' },
-                    { id: 'bal2', t: 'Press de Banca con Mancuernas', c: 'Empuje Torso', d: '4 x 10 reps' },
-                    { id: 'bal3', t: 'Remo con Mancuerna a una Mano', c: 'Tracción Espalda', d: '3 x 10 reps' },
-                    { id: 'bal4', t: 'Hip Thrust con Mancuerna', c: 'Glúteos/Cadena Post', d: '4 x 12 reps' },
-                    { id: 'bal5', t: 'Elevaciones Laterales con Mancuerna', c: 'Hombros', d: '3 x 12 reps' },
-                    { id: 'bal6', t: 'Core de Abdominales en V', c: 'Abdomen', d: '3 x 15 reps' }
-                ],
-                'DiaB': [
-                    { id: 'bal7', t: 'Peso Muerto Rumano Barra', c: 'Isquios/Glúteos', d: '4 x 8 reps' },
-                    { id: 'bal8', t: 'Press Militar con Barra de Pie', c: 'Hombros/Core', d: '3 x 8 reps' },
-                    { id: 'bal9', t: 'Jalón Al Pecho Abierto', c: 'Espalda Alta', d: '4 x 10 reps' },
-                    { id: 'bal10', t: 'Zancadas Inversas Dinámicas', c: 'Piernas completas', d: '3 x 12 pasos por pierna' },
-                    { id: 'bal11', t: 'Curl de Bíceps + Copa Tríceps Combo', c: 'Brazos', d: '3 x 12 reps' }
-                ]
-            },
-            comun: {
-                hiit: [
-                    { id: 'hit1', t: 'Burpees Militares explosivos', c: 'Metabólico', d: '4 x 45 segundos' },
-                    { id: 'hit2', t: 'Kettlebell Swings Fluidos', c: 'Cadena Posterior', d: '4 x 20 reps' },
-                    { id: 'hit3', t: 'Mountain Climbers Rápidos', c: 'Core/Cardio', d: '4 x 45 segundos' },
-                    { id: 'hit4', t: 'Saltos al Cajón o Sentadilla Salto', c: 'Potencia', d: '3 x 12 reps' },
-                    { id: 'hit5', t: 'Plancha Abdominal Dinámica', c: 'Core', d: '3 x 1 minuto' }
-                ]
-            }
-        };
-
-        const dietRepository = {
-            'gain': {
-                kcal: '2,800 - 3,200 kcal',
-                macros: { p: 160, c: 350, g: 80 },
-                meals: [
-                    { t: 'Desayuno', d: '4 Huevos enteros + 100g de avena en hojuelas cocida con leche entera y 1 plátano.' },
-                    { t: 'Almuerzo', d: '200g de Pechuga de pollo o res magra + 250g de arroz blanco cocido + 100g de aguacate.' },
-                    { t: 'Merienda', d: 'Batido proteico (1 scoop) + 2 rebanadas de pan integral con crema de maní pura.' },
-                    { t: 'Cena', d: '180g de filete de salmón o pescado blanco + 300g de patata al horno + ensalada verde.' }
-                ]
-            },
-            'loss': {
-                kcal: '1,700 - 2,000 kcal',
-                macros: { p: 175, c: 160, g: 55 },
-                meals: [
-                    { t: 'Desayuno', d: '1 Taza de claras de huevo revueltas + 1 huevo entero + 50g de avena con agua y fresas.' },
-                    { t: 'Almuerzo', d: '200g de pechuga de pollo + 120g de quinoa cocida + abundantes vegetales al vapor.' },
-                    { t: 'Merienda', d: '200g de yogur griego natural 0% grasa + un puñado de almendras (15g).' },
-                    { t: 'Cena', d: '180g de filete de merluza o atún al natural + ensalada de hojas verdes con pepino.' }
-                ]
-            }
-        };
-
-        let db;
-        const dbName = "TNYFIT_DATABASE_V4";
-        const dbVersion = 1;
-
-        function initDatabase() {
-            return new Promise((resolve, reject) => {
-                const request = indexedDB.open(dbName, dbVersion);
-                request.onerror = () => reject("Error en IndexedDB");
-                request.onsuccess = (e) => { db = e.target.result; resolve(db); };
-                request.onupgradeneeded = (e) => {
-                    let database = e.target.result;
-                    if (!database.objectStoreNames.contains("users")) {
-                        database.createObjectStore("users", { keyPath: "email" });
-                    }
-                };
-            });
-        }
-
-        let sessionState = null;
-        const daysOfWeekList = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-        const currentDayName = daysOfWeekList[new Date().getDay()];
-
-        document.addEventListener("DOMContentLoaded", async () => {
-            const todayStr = new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
-            document.getElementById('current-date-string').textContent = todayStr.toUpperCase();
-            try {
-                await initDatabase();
-                checkActiveSession();
-            } catch (err) { console.error(err); }
-        });
-
-        function switchTab(tabId) {
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-            const selectedTab = document.getElementById(`tab-${tabId}`);
-            if (selectedTab) selectedTab.classList.add('active');
-
-            document.querySelectorAll('.nav-btn-sidebar').forEach(btn => {
-                btn.className = btn.getAttribute('data-tab-target') === tabId 
-                    ? "nav-btn-sidebar w-full flex items-center gap-3 px-4 py-3 rounded-xl text-brandPurple bg-brandPurple/5 font-medium text-xs uppercase tracking-wider transition-all text-left"
-                    : "nav-btn-sidebar w-full flex items-center gap-3 px-4 py-3 rounded-xl text-neutral-400 hover:text-white font-medium text-xs uppercase tracking-wider transition-all text-left";
-            });
-        }
-
-        const loginForm = document.getElementById('login-form');
-        loginForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const email = document.getElementById('user-email').value.trim().toLowerCase();
-            const name = document.getElementById('user-name').value.trim();
-            const gender = document.getElementById('user-gender').value;
-            const daysCount = parseInt(document.getElementById('training-days-count').value);
-            const bodyType = document.getElementById('body-type').value;
-            const focus = document.getElementById('training-focus').value;
-            const goal = document.querySelector('input[name="fitness-goal"]:checked').value;
-
-            const newUser = {
-                email: email, name: name, gender: gender, daysCount: daysCount, bodyType: bodyType, focus: focus, goal: goal, completedExercises: []
-            };
-
-            const transaction = db.transaction(["users"], "readwrite");
-            transaction.objectStore("users").put(newUser);
-            transaction.oncomplete = () => {
-                sessionStorage.setItem("active_tny_email", email);
-                checkActiveSession();
-            };
-        });
-
-        function checkActiveSession() {
-            const activeEmail = sessionStorage.getItem("active_tny_email");
-            if (!activeEmail) {
-                document.getElementById('screen-dashboard').classList.add('hidden');
-                document.getElementById('screen-login').classList.remove('hidden');
-                return;
-            }
-            const request = db.transaction(["users"], "readonly").objectStore("users").get(activeEmail);
-            request.onsuccess = () => {
-                if (request.result) {
-                    sessionState = request.result;
-                    buildUserWorkspace();
-                } else { logout(); }
-            };
-        }
-
-        // CONECTOR Y CONFIGURADOR DE CONTENIDOS SEGÚN ENFOQUE Y GÉNERO
-        function buildUserWorkspace() {
-            const firstName = sessionState.name.split(' ')[0] || "Usuario";
-            document.getElementById('greeting-name').textContent = `¡Hola, ${firstName}!`;
-            document.getElementById('sidebar-user-name').textContent = firstName;
-            document.getElementById('sidebar-user-email').textContent = sessionState.email;
-            document.getElementById('profile-full-name').textContent = sessionState.name;
-            document.getElementById('profile-email').textContent = sessionState.email;
-            
-            document.getElementById('quick-gender-span').textContent = sessionState.gender;
-            const focusText = sessionState.focus === 'inferior' ? 'Tren Inferior' : sessionState.focus === 'superior' ? 'Tren Superior' : 'Estética Global';
-            document.getElementById('quick-focus-span').textContent = focusText;
-
-            const initials = sessionState.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || "FI";
-            document.getElementById('user-avatar').textContent = initials;
-            document.getElementById('sidebar-avatar').textContent = initials;
-            document.getElementById('profile-big-avatar').textContent = initials;
-
-            const goalStr = sessionState.goal === 'gain' ? 'Superávit Muscular' : 'Déficit Calórico';
-            document.getElementById('profile-meta').textContent = `${sessionState.bodyType} • ${focusText} • ${goalStr}`;
-            document.getElementById('days-counter-badge').textContent = `${sessionState.daysCount} DÍAS`;
-
-            // Generador Adaptativo
-            const generatedPlan = dynamicRoutineGenerator(sessionState.daysCount, sessionState.focus);
-            
-            const todayData = generatedPlan[currentDayName] || generatedPlan['Lunes'];
-            document.getElementById('current-day-routine-title').textContent = `Enfoque: ${todayData.focus}`;
-            document.getElementById('routine-focus-badge').textContent = currentDayName.toUpperCase();
-
-            const dailyContainer = document.getElementById('daily-routine-container');
-            dailyContainer.innerHTML = '';
-            
-            todayData.exercises.forEach(ex => {
-                const isCompleted = sessionState.completedExercises.includes(ex.id);
-                dailyContainer.innerHTML += `
-                    <div id="exercise-${ex.id}" class="flex items-center justify-between p-4 rounded-2xl border transition-all duration-300 ${isCompleted ? 'border-brandPurple/30 bg-brandPurple/[0.01]' : 'border-neutral-800 bg-cardBg'}">
-                        <div class="flex items-center gap-3">
-                            <div class="w-9 h-9 rounded-xl bg-neutral-900 flex items-center justify-center border border-neutral-800">
-                                <i data-lucide="${isCompleted ? 'check' : 'dumbbell'}" class="w-4 h-4 ${isCompleted ? 'text-brandPurple' : 'text-neutral-400'}"></i>
-                            </div>
-                            <div>
-                                <h4 class="text-xs font-semibold ${isCompleted ? 'text-neutral-500 line-through' : 'text-white'}">${ex.t}</h4>
-                                <p class="text-[10px] text-neutral-500">${ex.c} &bull; ${ex.d}</p>
-                            </div>
-                        </div>
-                        <button onclick="toggleExerciseStatus('${ex.id}')" class="w-6 h-6 rounded-full border flex items-center justify-center transition-all ${isCompleted ? 'bg-brandPurple border-brandPurple text-white' : 'border-neutral-700 text-transparent'}">
-                            <i data-lucide="check" class="w-3 h-3 stroke-[3]"></i>
-                        </button>
-                    </div>
-                `;
-            });
-
-            updateProgressBars(todayData);
-
-            // Render Calendario
-            const weeklyContainer = document.getElementById('weekly-distribution-container');
-            weeklyContainer.innerHTML = '';
-            Object.keys(generatedPlan).forEach(day => {
-                const info = generatedPlan[day];
-                const isToday = (day === currentDayName);
-                let listHTML = '';
-                info.exercises.forEach(e => {
-                    listHTML += `<li class="text-[11px] text-neutral-400 flex justify-between border-b border-neutral-900 pb-1.5 pt-0.5"><span>• ${e.t}</span></li>`;
-                });
-
-                weeklyContainer.innerHTML += `
-                    <div class="p-4 rounded-2xl border ${isToday ? 'border-brandPurple/40 bg-brandPurple/[0.01]' : 'border-neutral-800/80 bg-cardBg'} space-y-3 flex flex-col justify-between">
-                        <div>
-                            <div class="flex justify-between items-center mb-1">
-                                <span class="text-xs font-bold text-white">${day} ${isToday ? '• HOY' : ''}</span>
-                                <span class="text-[10px] text-brandPurple font-mono font-medium">${info.focus}</span>
-                            </div>
-                            <ul class="space-y-1.5 pt-2 border-t border-neutral-900">${listHTML}</ul>
-                        </div>
-                    </div>
-                `;
-            });
-
-            // Dietas
-            const nutrition = dietRepository[sessionState.goal];
-            document.getElementById('total-macro-kcal').textContent = nutrition.kcal;
-            document.getElementById('macros-bars-container').innerHTML = `
-                ${createMacroBarHTML("Proteínas", nutrition.macros.p + "g", "bg-purple-500", "w-full")}
-                ${createMacroBarHTML("Carbohidratos", nutrition.macros.c + "g", "bg-yellow-500", "w-11/12")}
-                ${createMacroBarHTML("Grasas", nutrition.macros.g + "g", "bg-emerald-500", "w-8/12")}
-            `;
-
-            const dietContainer = document.getElementById('diet-plan-container');
-            dietContainer.innerHTML = '';
-            nutrition.meals.forEach(meal => {
-                dietContainer.innerHTML += `
-                    <div class="p-4 rounded-xl bg-neutral-950 border border-neutral-800/60 space-y-1">
-                        <span class="text-xs font-bold uppercase tracking-wider text-brandPurple block">${meal.t}</span>
-                        <p class="text-[11px] text-neutral-300 leading-relaxed">${meal.d}</p>
-                    </div>
-                `;
-            });
-
-            renderAllRegisteredUsers();
-
-            document.getElementById('screen-login').classList.add('opacity-0');
-            setTimeout(() => {
-                document.getElementById('screen-login').classList.add('hidden');
-                document.getElementById('screen-dashboard').classList.remove('hidden');
-                setTimeout(() => {
-                    document.getElementById('screen-dashboard').classList.remove('opacity-0');
-                    document.getElementById('screen-dashboard').classList.add('opacity-100');
-                    lucide.createIcons();
-                }, 50);
-            }, 400);
-        }
-
-        // MOTOR ASIGNADOR FILTRADO POR EL ENFOQUE ESPECÍFICO REQUERIDO
-        function dynamicRoutineGenerator(days, focus) {
-            const repo = exerciseRepository[focus] || exerciseRepository['balanceado'];
-            const structure = {
-                'Lunes': { focus: 'Descanso', exercises: [{ id: 'rest', t: 'Recuperación Muscular', c: 'Descanso', d: 'Absoluto' }] },
-                'Martes': { focus: 'Descanso', exercises: [{ id: 'rest', t: 'Recuperación Muscular', c: 'Descanso', d: 'Absoluto' }] },
-                'Miércoles': { focus: 'Descanso', exercises: [{ id: 'rest', t: 'Recuperación Muscular', c: 'Descanso', d: 'Absoluto' }] },
-                'Jueves': { focus: 'Descanso', exercises: [{ id: 'rest', t: 'Recuperación Muscular', c: 'Descanso', d: 'Absoluto' }] },
-                'Viernes': { focus: 'Descanso', exercises: [{ id: 'rest', t: 'Recuperación Muscular', c: 'Descanso', d: 'Absoluto' }] },
-                'Sábado': { focus: 'Descanso', exercises: [{ id: 'rest', t: 'Recuperación Muscular', c: 'Descanso', d: 'Absoluto' }] },
-                'Domingo': { focus: 'Descanso', exercises: [{ id: 'rest', t: 'Recuperación Muscular', c: 'Descanso', d: 'Absoluto' }] }
-            };
-
-            if (days === 3) {
-                structure['Lunes'] = { focus: 'Bloque Enfoque A', exercises: repo['DiaA'] };
-                structure['Miércoles'] = { focus: 'Bloque Enfoque B', exercises: repo['DiaB'] };
-                structure['Viernes'] = { focus: 'Estabilidad / HIIT', exercises: exerciseRepository.comun.hiit };
-            } else if (days === 4) {
-                structure['Lunes'] = { focus: 'Acondicionamiento Principal A', exercises: repo['DiaA'] };
-                structure['Martes'] = { focus: 'Bloque de Potencia HIIT', exercises: exerciseRepository.comun.hiit };
-                structure['Jueves'] = { focus: 'Acondicionamiento Principal B', exercises: repo['DiaB'] };
-                structure['Viernes'] = { focus: 'Hipertrofia Estricta', exercises: repo['DiaA'].slice(0, 5) };
-            } else { // 5 Días
-                structure['Lunes'] = { focus: 'Bloque de Desarrollo I', exercises: repo['DiaA'] };
-                structure['Martes'] = { focus: 'Bloque de Desarrollo II', exercises: repo['DiaB'] };
-                structure['Miércoles'] = { focus: 'Quema / HIIT Complejo', exercises: exerciseRepository.comun.hiit };
-                structure['Viernes'] = { focus: 'Volumen y Aislamiento', exercises: repo['DiaA'].slice(0, 5) };
-                structure['Sábado'] = { focus: 'Remate / Definición', exercises: repo['DiaB'].slice(0, 5) };
-            }
-            return structure;
-        }
-
-        function createMacroBarHTML(name, val, color, width) {
-            return `
-                <div>
-                    <div class="flex justify-between text-[11px] mb-1">
-                        <span class="text-neutral-400">${name}</span>
-                        <span class="text-white font-mono font-bold">${val}</span>
-                    </div>
-                    <div class="w-full bg-neutral-900 h-1.5 rounded-full overflow-hidden">
-                        <div class="${color} h-full ${width}"></div>
-                    </div>
-                </div>
-            `;
-        }
-
-        function toggleExerciseStatus(id) {
-            const index = sessionState.completedExercises.indexOf(id);
-            if (index > -1) sessionState.completedExercises.splice(index, 1);
-            else sessionState.completedExercises.push(id);
-
-            const transaction = db.transaction(["users"], "readwrite");
-            transaction.objectStore("users").put(sessionState);
-
-            transaction.oncomplete = () => {
-                const generatedPlan = dynamicRoutineGenerator(sessionState.daysCount, sessionState.focus);
-                updateProgressBars(generatedPlan[currentDayName] || generatedPlan['Lunes']);
-                
-                const isCompleted = sessionState.completedExercises.includes(id);
-                const card = document.getElementById(`exercise-${id}`);
-                if(card) {
-                    card.className = `flex items-center justify-between p-4 rounded-2xl border transition-all duration-300 ${isCompleted ? 'border-brandPurple/30 bg-brandPurple/[0.01]' : 'border-neutral-800 bg-cardBg'}`;
-                    card.querySelector('h4').className = `text-xs font-semibold ${isCompleted ? 'text-neutral-500 line-through' : 'text-white'}`;
-                    card.querySelector('button').className = `w-6 h-6 rounded-full border flex items-center justify-center transition-all ${isCompleted ? 'bg-brandPurple border-brandPurple text-white' : 'border-neutral-700 text-transparent'}`;
-                }
-                lucide.createIcons();
-            };
-        }
-
-        function updateProgressBars(todayData) {
-            const todayIds = todayData.exercises.map(e => e.id);
-            const total = todayIds.filter(id => id !== 'rest').length;
-            
-            if (total === 0) {
-                document.getElementById('progress-percentage').textContent = `Descanso`;
-                document.getElementById('progress-bar-fill').style.width = `100%`;
-                return;
-            }
-
-            const completedToday = sessionState.completedExercises.filter(id => todayIds.includes(id)).length;
-            const percent = Math.round((completedToday / total) * 100);
-
-            document.getElementById('progress-percentage').textContent = `${percent}%`;
-            document.getElementById('progress-bar-fill').style.width = `${percent}%`;
-            document.getElementById('kcal-display').innerHTML = `${completedToday * 90} <span class="text-xs text-neutral-500 font-normal">kcal</span>`;
-            document.getElementById('time-display').innerHTML = `${completedToday} / ${total}`;
-        }
-
-        function renderAllRegisteredUsers() {
-            const listContainer = document.getElementById('db-users-list');
-            listContainer.innerHTML = '';
-            db.transaction(["users"], "readonly").objectStore("users").openCursor().onsuccess = (e) => {
-                const cursor = e.target.result;
-                if (cursor) {
-                    const user = cursor.value;
-                    listContainer.innerHTML += `
-                        <div class="p-3 flex justify-between items-center text-xs">
-                            <div>
-                                <p class="text-white font-medium">${user.name} (${user.gender})</p>
-                                <p class="text-[10px] text-neutral-500 font-mono">${user.email}</p>
-                            </div>
-                            <span class="text-[9px] px-2 py-0.5 rounded bg-neutral-900 border border-neutral-800 text-neutral-400">${user.focus}</span>
-                        </div>
-                    `;
-                    cursor.continue();
-                } else if (listContainer.innerHTML === '') {
-                    listContainer.innerHTML = `<p class="p-4 text-center text-xs text-neutral-600">Base de datos vacía.</p>`;
-                }
-            };
-        }
-
-        function logout() {
-            sessionStorage.removeItem("active_tny_email");
-            document.getElementById('screen-dashboard').classList.add('opacity-0');
-            setTimeout(() => {
-                document.getElementById('screen-dashboard').classList.add('hidden');
-                document.getElementById('screen-login').classList.remove('hidden');
-                loginForm.reset();
-                switchTab('inicio');
-                setTimeout(() => { document.getElementById('screen-login').classList.remove('opacity-0'); }, 50);
-            }, 400);
-        }
-    </script>
+    <script src="config.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
