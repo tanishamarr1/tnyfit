@@ -144,3 +144,85 @@ create policy "avatar_owner_update"
 create policy "avatar_owner_delete"
   on storage.objects for delete
   using (bucket_id = 'avatars' and auth.uid()::text = (storage.foldername(name))[1]);
+
+  -- ============================================================================
+-- TNY FIT - Migración desde el esquema anterior
+-- ============================================================================
+
+-- Agregar la nueva columna rest_days si no existe
+ALTER TABLE public.profiles
+ADD COLUMN IF NOT EXISTS rest_days INTEGER[] DEFAULT '{}';
+
+-- Agregar columnas de recordatorios si no existen
+ALTER TABLE public.profiles
+ADD COLUMN IF NOT EXISTS reminder_enabled BOOLEAN DEFAULT FALSE;
+
+ALTER TABLE public.profiles
+ADD COLUMN IF NOT EXISTS reminder_time TEXT DEFAULT '19:00';
+
+-- Crear o reemplazar la función para actualizar updated_at
+CREATE OR REPLACE FUNCTION public.update_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Eliminar el trigger anterior si existe
+DROP TRIGGER IF EXISTS profiles_updated_at ON public.profiles;
+
+-- Crear nuevamente el trigger
+CREATE TRIGGER profiles_updated_at
+BEFORE UPDATE ON public.profiles
+FOR EACH ROW
+EXECUTE FUNCTION public.update_updated_at();
+
+-- Habilitar RLS
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+-- Eliminar políticas si ya existen
+DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
+
+-- Crear políticas
+CREATE POLICY "Users can view own profile"
+ON public.profiles
+FOR SELECT
+USING (auth.uid() = id);
+
+CREATE POLICY "Users can update own profile"
+ON public.profiles
+FOR UPDATE
+USING (auth.uid() = id)
+WITH CHECK (auth.uid() = id);
+
+CREATE POLICY "Users can insert own profile"
+ON public.profiles
+FOR INSERT
+WITH CHECK (auth.uid() = id);
+
+-- Eliminar la vista si existe
+DROP VIEW IF EXISTS public.user_stats;
+
+-- Crear la vista nuevamente
+CREATE VIEW public.user_stats AS
+SELECT
+    id,
+    name,
+    email,
+    gender,
+    age,
+    weight_kg,
+    height_cm,
+    days_count,
+    body_type,
+    focus,
+    goal,
+    avatar_url,
+    array_length(rest_days, 1) AS rest_days_count,
+    jsonb_array_length(weight_log) AS weight_log_count,
+    created_at,
+    updated_at
+FROM public.profiles;

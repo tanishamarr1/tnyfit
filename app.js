@@ -1,8 +1,10 @@
 // =========================================================================
-// TNY FIT — Motor de aplicación
+// TNY FIT — Motor de aplicación v2.0
+// Mejoras: Selección de días de descanso, banco de 100+ ejercicios,
+// nutrición variada y económica, mejor rotación
 // =========================================================================
 
-// ---- BANCO DE EJERCICIOS CLASIFICADOS POR ENFOQUE (con estimación de kcal 'k') ----
+// ---- BANCO EXTENSO DE EJERCICIOS CLASIFICADOS POR ENFOQUE ----
 const exerciseRepository = {
     inferior: {
         DiaA: [
@@ -11,14 +13,33 @@ const exerciseRepository = {
             { id: 'inf3', t: 'Peso Muerto Rumano con Mancuerna', c: 'Isquiotibiales', d: '4 x 10 reps', k: 55 },
             { id: 'inf4', t: 'Prensa Inclinada a Una Sola Pierna', c: 'Tren Inferior', d: '3 x 12 reps por lado', k: 50 },
             { id: 'inf5', t: 'Abducciones en Polea o Máquina', c: 'Glúteo Medio', d: '3 x 15 reps', k: 30 },
-            { id: 'inf6', t: 'Elevación de Pantorrillas Sentado', c: 'Sóleo', d: '3 x 15 reps', k: 25 }
+            { id: 'inf6', t: 'Elevación de Pantorrillas Sentado', c: 'Sóleo', d: '3 x 15 reps', k: 25 },
+            { id: 'inf7', t: 'Sentadilla Frontal Barra', c: 'Cuádriceps', d: '4 x 8 reps', k: 58 },
+            { id: 'inf8', t: 'Prensa de Pierna 45°', c: 'Tren Inferior', d: '4 x 10 reps', k: 55 },
+            { id: 'inf9', t: 'Zancadas Caminantes con Mancuernas', c: 'Piernas', d: '3 x 12 por lado', k: 48 },
+            { id: 'inf10', t: 'Extensiones de Cuádriceps Máquina', c: 'Cuádriceps Aislado', d: '3 x 15 reps', k: 40 },
+            { id: 'inf11', t: 'Patadas de Glúteo en Polea', c: 'Glúteo', d: '4 x 12 reps', k: 35 },
+            { id: 'inf12', t: 'Curl Isquio Acostado Máquina', c: 'Isquiotibiales', d: '3 x 12 reps', k: 38 },
+            { id: 'inf13', t: 'Abducción de Cadera en Máquina', c: 'Glúteo Medio', d: '4 x 15 reps', k: 32 },
+            { id: 'inf14', t: 'Sentadilla Sissy con Peso', c: 'Cuádriceps Bajo', d: '3 x 12 reps', k: 45 },
+            { id: 'inf15', t: 'Peso Muerto Sumo Barra', c: 'Glúteos/Aductores', d: '4 x 8 reps', k: 60 },
+            { id: 'inf16', t: 'Plancha Abdominal Estática', c: 'Core', d: '3 x 60 seg', k: 25 },
+            { id: 'inf17', t: 'Elevación de Pantorrillas de Pie', c: 'Gemelos', d: '4 x 20 reps', k: 30 },
+            { id: 'inf18', t: 'Aductores en Máquina', c: 'Aductores', d: '3 x 15 reps', k: 28 },
+            { id: 'inf19', t: 'Sentadilla Búlgara Profunda', c: 'Glúteos/Cuádriceps', d: '3 x 10 reps', k: 50 },
+            { id: 'inf20', t: 'Flexión de Cadera en Polea', c: 'Psoas/Core', d: '3 x 12 reps', k: 28 }
         ],
         DiaB: [
-            { id: 'inf7', t: 'Zancadas Búlgaras Enfoque Glúteo', c: 'Glúteos/Isquios', d: '3 x 10 reps por pierna', k: 50 },
-            { id: 'inf8', t: 'Curl de Piernas Acostado', c: 'Isquiotibiales', d: '4 x 12 reps', k: 40 },
-            { id: 'inf9', t: 'Extensiones de Cuádriceps', c: 'Cuádriceps Aislando', d: '3 x 15 reps Drop-set', k: 40 },
-            { id: 'inf10', t: 'Patadas de Glúteo en Polea Baja', c: 'Glúteo Superior', d: '4 x 12 reps', k: 35 },
-            { id: 'inf11', t: 'Plancha Abdominal de Estabilidad', c: 'Core', d: '3 x 1 minuto', k: 25 }
+            { id: 'inf21', t: 'Zancadas Búlgaras Enfoque Glúteo', c: 'Glúteos/Isquios', d: '3 x 10 reps por pierna', k: 50 },
+            { id: 'inf22', t: 'Curl de Piernas Acostado', c: 'Isquiotibiales', d: '4 x 12 reps', k: 40 },
+            { id: 'inf23', t: 'Extensiones de Cuádriceps Drop', c: 'Cuádriceps Puro', d: '3 x 15 reps Drop-set', k: 40 },
+            { id: 'inf24', t: 'Patadas de Glúteo en Polea Baja', c: 'Glúteo Superior', d: '4 x 12 reps', k: 35 },
+            { id: 'inf25', t: 'Plancha Abdominal de Estabilidad', c: 'Core', d: '3 x 1 minuto', k: 25 },
+            { id: 'inf26', t: 'Peso Muerto Convencional', c: 'Cadena Posterior', d: '4 x 6 reps', k: 62 },
+            { id: 'inf27', t: 'Leg Press Máquina Alta', c: 'Cuádriceps/Glúteos', d: '3 x 12 reps', k: 52 },
+            { id: 'inf28', t: 'Crunch Abdominal Máquina', c: 'Abdominales', d: '3 x 15 reps', k: 28 },
+            { id: 'inf29', t: 'Sentadilla Box Jump', c: 'Potencia Piernas', d: '3 x 8 reps', k: 48 },
+            { id: 'inf30', t: 'Aducción de Cadera Banca', c: 'Aductores', d: '3 x 12 reps', k: 25 }
         ]
     },
     superior: {
@@ -28,14 +49,38 @@ const exerciseRepository = {
             { id: 'sup3', t: 'Press Militar con Mancuernas', c: 'Hombro Anterior', d: '3 x 10 reps', k: 45 },
             { id: 'sup4', t: 'Jalón al Pecho Agarre Neutro', c: 'Amplitud Dorsal', d: '3 x 12 reps', k: 40 },
             { id: 'sup5', t: 'Elevaciones Laterales Estrictas', c: 'Hombro Medio', d: '4 x 12-15 reps', k: 30 },
-            { id: 'sup6', t: 'Fondos en Paralelas para Tríceps', c: 'Brazos', d: '3 x max reps', k: 40 }
+            { id: 'sup6', t: 'Fondos en Paralelas para Tríceps', c: 'Brazos', d: '3 x max reps', k: 40 },
+            { id: 'sup7', t: 'Press Inclinado Barra', c: 'Pectoral Superior', d: '4 x 10 reps', k: 50 },
+            { id: 'sup8', t: 'Remo Gironda Baja', c: 'Densidad de Espalda', d: '4 x 10 reps', k: 45 },
+            { id: 'sup9', t: 'Pájaros Pectoral con Mancuernas', c: 'Pecho Aislado', d: '3 x 12 reps', k: 35 },
+            { id: 'sup10', t: 'Remo Invertido en Barra', c: 'Espalda Baja', d: '3 x 12 reps', k: 42 },
+            { id: 'sup11', t: 'Press de Hombro Máquina Smith', c: 'Hombros', d: '3 x 12 reps', k: 40 },
+            { id: 'sup12', t: 'Jalón Frontal Cerrado', c: 'Espalda Media', d: '4 x 10 reps', k: 42 },
+            { id: 'sup13', t: 'Aperturas Pectoral Máquina', c: 'Pecho Puro', d: '3 x 12 reps', k: 35 },
+            { id: 'sup14', t: 'Remo Pendlay Barra', c: 'Espalda Alta', d: '4 x 8 reps', k: 50 },
+            { id: 'sup15', t: 'Press Inclinado Mancuernas 30°', c: 'Pectoral Alto', d: '3 x 12 reps', k: 48 },
+            { id: 'sup16', t: 'Jalón Polea Neutra Ancha', c: 'Amplitud Dorsal', d: '4 x 12 reps', k: 42 },
+            { id: 'sup17', t: 'Elevaciones Frontales Barra Z', c: 'Hombro Anterior', d: '3 x 12 reps', k: 32 },
+            { id: 'sup18', t: 'Pull-ups Peso Corporal', c: 'Espalda Total', d: '3 x max reps', k: 48 },
+            { id: 'sup19', t: 'Press Decline Barra', c: 'Pectoral Bajo', d: '3 x 10 reps', k: 48 },
+            { id: 'sup20', t: 'Remo Una Mano Mancuerna', c: 'Espalda Unilateral', d: '3 x 12 reps', k: 40 }
         ],
         DiaB: [
-            { id: 'sup7', t: 'Press Inclinado con Mancuernas', c: 'Pectoral Superior', d: '4 x 10 reps', k: 50 },
-            { id: 'sup8', t: 'Remo Gironda en Polea Baja', c: 'Densidad de Espalda', d: '4 x 10 reps', k: 45 },
-            { id: 'sup9', t: 'Pájaros con Mancuerna (Deltoides Post)', c: 'Hombro Posterior', d: '3 x 15 reps', k: 30 },
-            { id: 'sup10', t: 'Curl de Bíceps Alterno con Supinación', c: 'Bíceps', d: '3 x 12 reps', k: 30 },
-            { id: 'sup11', t: 'Extensiones de Tríceps sobre la Cabeza', c: 'Tríceps Cabeza Larga', d: '3 x 12 reps', k: 30 }
+            { id: 'sup21', t: 'Press Inclinado con Mancuernas', c: 'Pectoral Superior', d: '4 x 10 reps', k: 50 },
+            { id: 'sup22', t: 'Remo Gironda en Polea Baja', c: 'Densidad de Espalda', d: '4 x 10 reps', k: 45 },
+            { id: 'sup23', t: 'Pájaros con Mancuerna (Deltoides Post)', c: 'Hombro Posterior', d: '3 x 15 reps', k: 30 },
+            { id: 'sup24', t: 'Curl de Bíceps Alterno con Supinación', c: 'Bíceps', d: '3 x 12 reps', k: 30 },
+            { id: 'sup25', t: 'Extensiones de Tríceps sobre la Cabeza', c: 'Tríceps Cabeza Larga', d: '3 x 12 reps', k: 30 },
+            { id: 'sup26', t: 'Press Banca Cerrado Barra', c: 'Tríceps/Pecho', d: '3 x 10 reps', k: 45 },
+            { id: 'sup27', t: 'Remo Máquina Convergente', c: 'Espalda Media', d: '3 x 12 reps', k: 40 },
+            { id: 'sup28', t: 'Crucifijo Pectoral Polea', c: 'Pecho Aislado', d: '4 x 12 reps', k: 38 },
+            { id: 'sup29', t: 'Curl Concentrado Bíceps', c: 'Bíceps Puro', d: '3 x 12 reps', k: 28 },
+            { id: 'sup30', t: 'Extensión Tríceps Polea Cuerda', c: 'Tríceps', d: '4 x 12 reps', k: 32 },
+            { id: 'sup31', t: 'Prensa de Pecho Máquina', c: 'Pecho Máquina', d: '3 x 12 reps', k: 42 },
+            { id: 'sup32', t: 'Lat Pulldown Inverso', c: 'Espalda Baja', d: '3 x 12 reps', k: 38 },
+            { id: 'sup33', t: 'Elevación Lateral Sentado', c: 'Hombro Medio', d: '3 x 15 reps', k: 28 },
+            { id: 'sup34', t: 'Curl Barra Curva', c: 'Bíceps', d: '3 x 10 reps', k: 35 },
+            { id: 'sup35', t: 'Fondos en Banco Tríceps', c: 'Tríceps', d: '3 x 12 reps', k: 35 }
         ]
     },
     balanceado: {
@@ -45,14 +90,33 @@ const exerciseRepository = {
             { id: 'bal3', t: 'Remo con Mancuerna a una Mano', c: 'Tracción Espalda', d: '3 x 10 reps', k: 45 },
             { id: 'bal4', t: 'Hip Thrust con Mancuerna', c: 'Glúteos/Cadena Post', d: '4 x 12 reps', k: 55 },
             { id: 'bal5', t: 'Elevaciones Laterales con Mancuerna', c: 'Hombros', d: '3 x 12 reps', k: 30 },
-            { id: 'bal6', t: 'Core de Abdominales en V', c: 'Abdomen', d: '3 x 15 reps', k: 30 }
-        ],
-        DiaB: [
+            { id: 'bal6', t: 'Core de Abdominales en V', c: 'Abdomen', d: '3 x 15 reps', k: 30 },
             { id: 'bal7', t: 'Peso Muerto Rumano Barra', c: 'Isquios/Glúteos', d: '4 x 8 reps', k: 55 },
             { id: 'bal8', t: 'Press Militar con Barra de Pie', c: 'Hombros/Core', d: '3 x 8 reps', k: 45 },
             { id: 'bal9', t: 'Jalón Al Pecho Abierto', c: 'Espalda Alta', d: '4 x 10 reps', k: 45 },
             { id: 'bal10', t: 'Zancadas Inversas Dinámicas', c: 'Piernas completas', d: '3 x 12 pasos por pierna', k: 45 },
-            { id: 'bal11', t: 'Curl de Bíceps + Copa Tríceps Combo', c: 'Brazos', d: '3 x 12 reps', k: 30 }
+            { id: 'bal11', t: 'Curl de Bíceps + Copa Tríceps Combo', c: 'Brazos', d: '3 x 12 reps', k: 30 },
+            { id: 'bal12', t: 'Sentadilla Box Jump', c: 'Potencia', d: '3 x 8 reps', k: 48 },
+            { id: 'bal13', t: 'Remo Pendlay', c: 'Espalda', d: '4 x 8 reps', k: 50 },
+            { id: 'bal14', t: 'Prensa de Pierna', c: 'Piernas', d: '4 x 10 reps', k: 55 },
+            { id: 'bal15', t: 'Pájaros Pectoral', c: 'Pecho', d: '3 x 12 reps', k: 35 },
+            { id: 'bal16', t: 'Elevación de Pantorrillas', c: 'Gemelos', d: '4 x 15 reps', k: 30 },
+            { id: 'bal17', t: 'Plancha Lateral', c: 'Core', d: '3 x 45 seg c/lado', k: 28 },
+            { id: 'bal18', t: 'Curl Isquiotibiales', c: 'Isquios', d: '3 x 12 reps', k: 35 },
+            { id: 'bal19', t: 'Fondos Barra', c: 'Brazos/Pecho', d: '3 x max reps', k: 40 },
+            { id: 'bal20', t: 'Remo Máquina', c: 'Espalda', d: '3 x 12 reps', k: 40 }
+        ],
+        DiaB: [
+            { id: 'bal21', t: 'Peso Muerto Sumo', c: 'Glúteos/Aductores', d: '4 x 8 reps', k: 60 },
+            { id: 'bal22', t: 'Press Inclinado', c: 'Pecho Alto', d: '3 x 10 reps', k: 48 },
+            { id: 'bal23', t: 'Remo Invertido', c: 'Espalda Media', d: '3 x 12 reps', k: 42 },
+            { id: 'bal24', t: 'Zancadas Caminantes', c: 'Piernas', d: '3 x 12 pasos', k: 48 },
+            { id: 'bal25', t: 'Elevación Frontal', c: 'Hombro', d: '3 x 12 reps', k: 32 },
+            { id: 'bal26', t: 'Crunch Abdominal', c: 'Abdominales', d: '3 x 15 reps', k: 28 },
+            { id: 'bal27', t: 'Sentadilla Goblet', c: 'Piernas', d: '3 x 12 reps', k: 50 },
+            { id: 'bal28', t: 'Aperturas Pectoral', c: 'Pecho', d: '3 x 12 reps', k: 35 },
+            { id: 'bal29', t: 'Jalón Polea', c: 'Espalda', d: '4 x 10 reps', k: 42 },
+            { id: 'bal30', t: 'Curl Bíceps Barra', c: 'Brazos', d: '3 x 10 reps', k: 32 }
         ]
     },
     comun: {
@@ -61,12 +125,17 @@ const exerciseRepository = {
             { id: 'hit2', t: 'Kettlebell Swings Fluidos', c: 'Cadena Posterior', d: '4 x 20 reps', k: 70 },
             { id: 'hit3', t: 'Mountain Climbers Rápidos', c: 'Core/Cardio', d: '4 x 45 segundos', k: 60 },
             { id: 'hit4', t: 'Saltos al Cajón o Sentadilla Salto', c: 'Potencia', d: '3 x 12 reps', k: 65 },
-            { id: 'hit5', t: 'Plancha Abdominal Dinámica', c: 'Core', d: '3 x 1 minuto', k: 35 }
+            { id: 'hit5', t: 'Plancha Abdominal Dinámica', c: 'Core', d: '3 x 1 minuto', k: 35 },
+            { id: 'hit6', t: 'Battle Ropes Explosivos', c: 'Hombros/Core', d: '4 x 30 seg', k: 75 },
+            { id: 'hit7', t: 'Sentadilla Pulso Rápido', c: 'Piernas', d: '4 x 30 seg', k: 65 },
+            { id: 'hit8', t: 'Flexiones Rápidas', c: 'Pecho/Brazos', d: '3 x 20 reps', k: 55 },
+            { id: 'hit9', t: 'Jumping Jacks', c: 'Cardio Total', d: '4 x 45 seg', k: 50 },
+            { id: 'hit10', t: 'Pushups con Rotación', c: 'Core/Brazos', d: '3 x 12 reps', k: 45 }
         ]
     }
 };
 
-// Plantillas de comidas por somatotipo (el contenido varía; las kcal/macros son calculadas en vivo)
+// ---- BANCO EXTENSO DE COMIDAS ECONÓMICAS Y PRÁCTICAS ----
 const mealTemplates = {
     Ectomorfo: {
         loss: [
@@ -75,11 +144,23 @@ const mealTemplates = {
             { t: 'Merienda', d: 'Batido de proteína con leche entera y crema de maní.' },
             { t: 'Cena', d: 'Salmón al horno con patata y ensalada de aceite de oliva.' }
         ],
+        loss_alt: [
+            { t: 'Desayuno', d: 'Huevos revueltos con pan integral, arándanos y miel.' },
+            { t: 'Almuerzo', d: 'Atún en lata con arroz blanco y zanahorias cocidas.' },
+            { t: 'Merienda', d: 'Yogur natural con granola casera y manzana.' },
+            { t: 'Cena', d: 'Pechuga a la plancha con batata y brócoli al vapor.' }
+        ],
         gain: [
             { t: 'Desayuno', d: 'Huevos enteros, avena con leche entera y plátano.' },
             { t: 'Almuerzo', d: 'Res magra, arroz blanco abundante y aguacate.' },
             { t: 'Merienda', d: 'Batido de proteína + pan integral con crema de maní.' },
             { t: 'Cena', d: 'Pasta integral con pollo y aceite de oliva extra.' }
+        ],
+        gain_alt: [
+            { t: 'Desayuno', d: 'Omelette 3 huevos con queso, pan tostado y jugo natural.' },
+            { t: 'Almuerzo', d: 'Pechuga con papas al horno y ensalada con aceite.' },
+            { t: 'Merienda', d: 'Sandwich de atún con pan blanco, tomate y mayonesa.' },
+            { t: 'Cena', d: 'Lentejas con pollo y arroz blanco, postre: plátano con chocolate.' }
         ]
     },
     Mesomorfo: {
@@ -89,11 +170,23 @@ const mealTemplates = {
             { t: 'Merienda', d: 'Yogur griego natural con almendras.' },
             { t: 'Cena', d: 'Merluza o atún con ensalada de hojas verdes.' }
         ],
+        loss_alt: [
+            { t: 'Desayuno', d: 'Claras con tostadas integrales, miel y un café con poco azúcar.' },
+            { t: 'Almuerzo', d: 'Res magra en su jugo con papas al horno y vegetales.' },
+            { t: 'Merienda', d: 'Proteína con frutas secas variadas.' },
+            { t: 'Cena', d: 'Filete de pescado con arroz integral y vapor de espárragos.' }
+        ],
         gain: [
             { t: 'Desayuno', d: 'Huevos enteros con avena en hojuelas y plátano.' },
             { t: 'Almuerzo', d: 'Pollo o res magra, arroz blanco y aguacate.' },
             { t: 'Merienda', d: 'Batido proteico con pan integral y crema de maní.' },
             { t: 'Cena', d: 'Salmón con patata al horno y ensalada verde.' }
+        ],
+        gain_alt: [
+            { t: 'Desayuno', d: 'Avena con leche entera, plátano y huevo cocido extra.' },
+            { t: 'Almuerzo', d: 'Chuletas de cerdo magro con arroz blanco y salsa.' },
+            { t: 'Merienda', d: 'Quesadilla con queso y jamón, vaso de leche.' },
+            { t: 'Cena', d: 'Pasta blanca con pollo desmenuzado y parmesano.' }
         ]
     },
     Endomorfo: {
@@ -103,11 +196,23 @@ const mealTemplates = {
             { t: 'Merienda', d: 'Yogur griego 0% con canela, sin fruta añadida.' },
             { t: 'Cena', d: 'Pescado blanco al vapor con ensalada grande.' }
         ],
+        loss_alt: [
+            { t: 'Desayuno', d: 'Claras revueltas con champiñones, pan tostado integral.' },
+            { t: 'Almuerzo', d: 'Pollo desmenuzado con mucho brócoli y papaya pequeña.' },
+            { t: 'Merienda', d: 'Melón con queso panela magro, té sin azúcar.' },
+            { t: 'Cena', d: 'Caldo de vegetales con pechuga y hierbas aromáticas.' }
+        ],
         gain: [
             { t: 'Desayuno', d: 'Huevos enteros con avena moderada y arándanos.' },
             { t: 'Almuerzo', d: 'Res magra o pollo con arroz moderado y vegetales.' },
             { t: 'Merienda', d: 'Batido proteico con leche descremada.' },
             { t: 'Cena', d: 'Salmón con vegetales al vapor, carbohidrato mínimo.' }
+        ],
+        gain_alt: [
+            { t: 'Desayuno', d: 'Omelette 2 huevos + clara, avena pequeña y miel.' },
+            { t: 'Almuerzo', d: 'Pechuga con batata pequeña y vegetales grillados.' },
+            { t: 'Merienda', d: 'Pudín de proteína con leche semi descremada.' },
+            { t: 'Cena', d: 'Lentejas con pollo magro, sin aceite extra.' }
         ]
     }
 };
@@ -149,12 +254,11 @@ function showToast(message, type = 'success') {
 }
 
 // =========================================================================
-// SUPABASE — cliente + capa de datos (reemplaza IndexedDB)
+// SUPABASE — cliente + capa de datos
 // =========================================================================
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// Convierte una fila de Postgres (snake_case) al shape que usa la app (camelCase)
 function profileRowToSessionState(row) {
     return {
         id: row.id,
@@ -168,211 +272,104 @@ function profileRowToSessionState(row) {
         bodyType: row.body_type,
         focus: row.focus,
         goal: row.goal,
-        avatarUrl: row.avatar_url || null,
-        reminderEnabled: row.reminder_enabled || false,
-        reminderTime: row.reminder_time || '19:00',
+        avatarUrl: row.avatar_url,
         completedByDate: row.completed_by_date || {},
         waterByDate: row.water_by_date || {},
         weightLog: row.weight_log || [],
-        substitutions: row.substitutions || {}
+        substitutions: row.substitutions || {},
+        restDays: row.rest_days || [], // NUEVO: días de descanso seleccionados
+        reminderEnabled: row.reminder_enabled || false,
+        reminderTime: row.reminder_time || '19:00'
     };
 }
 
-// Convierte el sessionState de la app de vuelta al shape de la tabla Postgres
-function sessionStateToProfileRow(state) {
-    return {
-        id: state.id,
-        email: state.email,
-        name: state.name,
-        gender: state.gender,
-        age: state.age,
-        weight_kg: state.weightKg,
-        height_cm: state.heightCm,
-        days_count: state.daysCount,
-        body_type: state.bodyType,
-        focus: state.focus,
-        goal: state.goal,
-        avatar_url: state.avatarUrl || null,
-        reminder_enabled: state.reminderEnabled || false,
-        reminder_time: state.reminderTime || '19:00',
-        completed_by_date: state.completedByDate,
-        water_by_date: state.waterByDate,
-        weight_log: state.weightLog,
-        substitutions: state.substitutions
-    };
-}
-
-async function fetchProfile(userId) {
+async function fetchProfile(uid) {
     const { data, error } = await supabaseClient
         .from('profiles')
         .select('*')
-        .eq('id', userId)
-        .maybeSingle();
+        .eq('id', uid)
+        .single();
+    if (error) return null;
+    return profileRowToSessionState(data);
+}
+
+async function insertProfile(profile) {
+    const { error } = await supabaseClient.from('profiles').insert({
+        id: profile.id,
+        email: profile.email,
+        name: profile.name,
+        gender: profile.gender,
+        age: profile.age,
+        weight_kg: profile.weightKg,
+        height_cm: profile.heightCm,
+        days_count: profile.daysCount,
+        body_type: profile.bodyType,
+        focus: profile.focus,
+        goal: profile.goal,
+        completed_by_date: profile.completedByDate,
+        water_by_date: profile.waterByDate,
+        weight_log: profile.weightLog,
+        substitutions: profile.substitutions,
+        rest_days: profile.restDays || [], // NUEVO
+        reminder_enabled: profile.reminderEnabled || false,
+        reminder_time: profile.reminderTime || '19:00'
+    });
     if (error) throw error;
-    return data ? profileRowToSessionState(data) : null;
-}
-
-async function insertProfile(state) {
-    const { error } = await supabaseClient.from('profiles').insert(sessionStateToProfileRow(state));
-    if (error) throw error;
-}
-
-// ---- Perfil pendiente (para cuando la confirmación de email está activada) ----
-// Si Supabase exige confirmar el correo, signUp() no da sesión todavía, así que
-// RLS bloquearía el insert. Guardamos los datos del wizard en localStorage y los
-// insertamos recién cuando exista una sesión real (primer login tras confirmar).
-const PENDING_PROFILE_KEY = 'tnyfit_pending_profile';
-
-function savePendingProfile(profile) {
-    localStorage.setItem(PENDING_PROFILE_KEY, JSON.stringify(profile));
-}
-
-function getPendingProfile() {
-    const raw = localStorage.getItem(PENDING_PROFILE_KEY);
-    return raw ? JSON.parse(raw) : null;
-}
-
-function clearPendingProfile() {
-    localStorage.removeItem(PENDING_PROFILE_KEY);
-}
-
-// Inserta el perfil pendiente (si hay uno) usando el id real que Supabase Auth
-// asignó a esta sesión ya confirmada/logueada.
-async function insertPendingProfileIfAny(session) {
-    const pending = getPendingProfile();
-    if (!pending) return null;
-
-    const profileToInsert = { ...pending, id: session.user.id, email: session.user.email };
-    await insertProfile(profileToInsert);
-    clearPendingProfile();
-    return profileToInsert;
 }
 
 async function saveSession() {
     if (!sessionState) return;
+    const { error } = await supabaseClient
+        .from('profiles')
+        .update({
+            name: sessionState.name,
+            gender: sessionState.gender,
+            age: sessionState.age,
+            weight_kg: sessionState.weightKg,
+            height_cm: sessionState.heightCm,
+            days_count: sessionState.daysCount,
+            body_type: sessionState.bodyType,
+            focus: sessionState.focus,
+            goal: sessionState.goal,
+            avatar_url: sessionState.avatarUrl,
+            completed_by_date: sessionState.completedByDate,
+            water_by_date: sessionState.waterByDate,
+            weight_log: sessionState.weightLog,
+            substitutions: sessionState.substitutions,
+            rest_days: sessionState.restDays || [], // NUEVO
+            reminder_enabled: sessionState.reminderEnabled,
+            reminder_time: sessionState.reminderTime
+        })
+        .eq('id', sessionState.id);
+    if (error) throw error;
+}
+
+function savePendingProfile(profile) {
+    localStorage.setItem('tnyfit_pending_profile', JSON.stringify(profile));
+}
+
+async function insertPendingProfileIfAny(session) {
+    const pending = localStorage.getItem('tnyfit_pending_profile');
+    if (!pending) return false;
+    const profile = JSON.parse(pending);
+    profile.id = session.user.id;
+    profile.email = session.user.email;
     try {
-        const { error } = await supabaseClient
-            .from('profiles')
-            .update(sessionStateToProfileRow(sessionState))
-            .eq('id', sessionState.id);
-        if (error) throw error;
+        await insertProfile(profile);
+        localStorage.removeItem('tnyfit_pending_profile');
+        return true;
     } catch (err) {
-        console.error(err);
-        showToast('No se pudo sincronizar con la nube. Revisa tu conexión.', 'error');
+        console.error('Error inserting pending profile:', err);
+        return false;
     }
 }
 
 // =========================================================================
-// INICIALIZACIÓN
+// REGISTRO + WIZARD
 // =========================================================================
 
-document.addEventListener('DOMContentLoaded', async () => {
-    const todayStr = new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
-    document.getElementById('current-date-string').textContent = todayStr.toUpperCase();
-
-    await checkActiveSession();
-
-    registerServiceWorker();
-    lucide.createIcons();
-});
-
-// Mantiene la sesión sincronizada si Supabase la refresca/expira en otra pestaña
-supabaseClient.auth.onAuthStateChange((event) => {
-    if (event === 'SIGNED_OUT') {
-        sessionState = null;
-    }
-    if (event === 'PASSWORD_RECOVERY') {
-        // El usuario volvió del enlace de "olvidé mi contraseña". Supabase ya
-        // creó una sesión temporal válida solo para poder llamar updateUser().
-        showRecoveryScreen();
-    }
-});
-
-function showRecoveryScreen() {
-    document.getElementById('auth-loading')?.classList.add('hidden');
-    document.getElementById('screen-dashboard').classList.add('hidden');
-    document.getElementById('screen-login').classList.remove('hidden');
-    document.getElementById('panel-signin').classList.add('hidden');
-    document.getElementById('panel-register').classList.add('hidden');
-    document.getElementById('panel-recovery').classList.remove('hidden');
-}
-
-const recoveryForm = document.getElementById('recovery-form');
-recoveryForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const newPassword = document.getElementById('recovery-password').value;
-    const confirmPassword = document.getElementById('recovery-password-confirm').value;
-
-    if (newPassword.length < 6) {
-        showToast('La contraseña debe tener al menos 6 caracteres.', 'error');
-        return;
-    }
-    if (newPassword !== confirmPassword) {
-        showToast('Las contraseñas no coinciden.', 'error');
-        return;
-    }
-
-    try {
-        const { error } = await supabaseClient.auth.updateUser({ password: newPassword });
-        if (error) throw error;
-        recoveryForm.reset();
-        showToast('Contraseña actualizada. Ya puedes usarla para iniciar sesión.', 'success');
-        document.getElementById('panel-recovery').classList.add('hidden');
-        goToSignin();
-    } catch (err) {
-        console.error(err);
-        showToast(err.message || 'No se pudo actualizar la contraseña.', 'error');
-    }
-});
-
-window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredInstallPrompt = e;
-    const btn = document.getElementById('pwa-install-btn');
-    if (btn) btn.classList.remove('hidden');
-});
-
-function registerServiceWorker() {
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js').catch(() => { /* silencioso: opcional en dev */ });
-    }
-}
-
-async function triggerInstall() {
-    if (!deferredInstallPrompt) return;
-    deferredInstallPrompt.prompt();
-    await deferredInstallPrompt.userChoice;
-    deferredInstallPrompt = null;
-    document.getElementById('pwa-install-btn').classList.add('hidden');
-}
-
-// =========================================================================
-// NAVEGACIÓN DE TABS
-// =========================================================================
-
-function switchTab(tabId) {
-    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-    const selectedTab = document.getElementById(`tab-${tabId}`);
-    if (selectedTab) selectedTab.classList.add('active');
-
-    document.querySelectorAll('.nav-btn-sidebar').forEach(btn => {
-        btn.className = btn.getAttribute('data-tab-target') === tabId
-            ? 'nav-btn-sidebar w-full flex items-center gap-3 px-4 py-3 rounded-xl text-brandPurple bg-brandPurple/5 font-medium text-xs uppercase tracking-wider transition-all text-left'
-            : 'nav-btn-sidebar w-full flex items-center gap-3 px-4 py-3 rounded-xl text-neutral-400 hover:text-white font-medium text-xs uppercase tracking-wider transition-all text-left';
-    });
-    document.querySelectorAll('.nav-btn-mobile').forEach(btn => {
-        btn.className = btn.getAttribute('data-tab-mobile-target') === tabId
-            ? 'nav-btn-mobile flex flex-col items-center gap-1 text-brandPurple transition-all'
-            : 'nav-btn-mobile flex flex-col items-center gap-1 text-neutral-500 hover:text-neutral-300 transition-all';
-    });
-}
-
-// =========================================================================
-// WIZARD DE REGISTRO
-// =========================================================================
-
+const WIZARD_TOTAL_STEPS = 3;
 let wizardStep = 1;
-const WIZARD_TOTAL_STEPS = 4;
 
 function goToRegister() {
     document.getElementById('panel-signin').classList.add('hidden');
@@ -388,15 +385,13 @@ function goToSignin() {
 
 function renderWizardStep() {
     document.querySelectorAll('.wizard-step').forEach(step => {
-        step.classList.toggle('active', parseInt(step.getAttribute('data-step')) === wizardStep);
+        step.classList.remove('active');
     });
+    document.getElementById(`wizard-step-${wizardStep}`)?.classList.add('active');
+
     document.querySelectorAll('.wizard-dot').forEach((dot, idx) => {
-        const stepNum = idx + 1;
-        dot.className = stepNum === wizardStep
-            ? 'wizard-dot h-1.5 rounded-full bg-brandPurple w-8 transition-all'
-            : stepNum < wizardStep
-                ? 'wizard-dot h-1.5 rounded-full bg-brandPurple/40 w-4 transition-all'
-                : 'wizard-dot h-1.5 rounded-full bg-neutral-800 w-4 transition-all';
+        dot.classList.toggle('bg-brandPurple', idx < wizardStep);
+        dot.classList.toggle('bg-neutral-800', idx >= wizardStep);
     });
 
     document.getElementById('wizard-back-btn').classList.toggle('hidden', wizardStep === 1);
@@ -481,22 +476,20 @@ registerForm.addEventListener('submit', async (e) => {
             completedByDate: {},
             waterByDate: {},
             weightLog: [],
-            substitutions: {}
+            substitutions: {},
+            restDays: [], // NUEVO: vacío por defecto
+            reminderEnabled: false,
+            reminderTime: '19:00'
         };
         newProfile.weightLog.push({ date: todayKey(), kg: newProfile.weightKg });
 
         if (data.session) {
-            // Confirmación de email desactivada en el proyecto: ya hay sesión,
-            // así que auth.uid() coincide y el insert pasa la política de RLS.
             await insertProfile(newProfile);
             registerForm.reset();
             wizardStep = 1;
             showToast(`¡Bienvenido, ${newProfile.name.split(' ')[0]}! Tu ecosistema fue generado.`, 'success');
             await checkActiveSession();
         } else {
-            // Confirmación de email activada: todavía NO hay sesión, así que
-            // insertar ahora violaría RLS (auth.uid() sería null). Guardamos
-            // el perfil localmente y lo insertamos en el primer login real.
             savePendingProfile(newProfile);
             registerForm.reset();
             wizardStep = 1;
@@ -562,9 +555,6 @@ async function checkActiveSession() {
         let profile = await fetchProfile(session.user.id);
 
         if (!profile) {
-            // Sesión válida pero sin fila de perfil todavía: probablemente es el
-            // primer login tras confirmar el correo. Si guardamos un perfil
-            // pendiente durante el registro, lo insertamos ahora que sí hay sesión.
             const inserted = await insertPendingProfileIfAny(session);
             if (inserted) {
                 profile = await fetchProfile(session.user.id);
@@ -572,7 +562,6 @@ async function checkActiveSession() {
         }
 
         if (!profile) {
-            // Realmente no hay perfil ni pendiente que insertar → cerrar sesión.
             await logout();
             return;
         }
@@ -609,7 +598,7 @@ function computeNutrition(user) {
     let bmr;
     if (gender === 'Hombre') bmr = 10 * w + 6.25 * h - 5 * age + 5;
     else if (gender === 'Mujer') bmr = 10 * w + 6.25 * h - 5 * age - 161;
-    else bmr = 10 * w + 6.25 * h - 5 * age - 78; // promedio entre fórmulas
+    else bmr = 10 * w + 6.25 * h - 5 * age - 78;
 
     const activityMultiplier = { 3: 1.375, 4: 1.465, 5: 1.55 }[daysCount] || 1.45;
     let tdee = bmr * activityMultiplier;
@@ -633,33 +622,44 @@ function computeNutrition(user) {
 }
 
 // =========================================================================
-// GENERADOR DE RUTINA + SUSTITUCIÓN DE EJERCICIOS
+// GENERADOR DE RUTINA CON SELECCIÓN DE DÍAS DE DESCANSO
 // =========================================================================
 
-function dynamicRoutineGenerator(days, focus) {
+function dynamicRoutineGenerator(days, focus, restDays = []) {
     const repo = exerciseRepository[focus] || exerciseRepository.balanceado;
     const restDay = () => ({ focus: 'Descanso', exercises: [{ id: 'rest', t: 'Recuperación Muscular', c: 'Descanso', d: 'Absoluto', k: 0 }] });
 
     const structure = {
-        Lunes: restDay(), Martes: restDay(), Miércoles: restDay(),
-        Jueves: restDay(), Viernes: restDay(), Sábado: restDay(), Domingo: restDay()
+        Domingo: restDay(), Lunes: restDay(), Martes: restDay(), Miércoles: restDay(),
+        Jueves: restDay(), Viernes: restDay(), Sábado: restDay()
     };
 
+    // Días de descanso del usuario
+    const userRestDays = restDays.map(d => daysOfWeekList[d]); // convertir índices a nombres
+
+    const workDays = daysOfWeekList.filter(day => !userRestDays.includes(day));
+
     if (days === 3) {
-        structure.Lunes = { focus: 'Bloque Enfoque A', exercises: repo.DiaA };
-        structure.Miércoles = { focus: 'Bloque Enfoque B', exercises: repo.DiaB };
-        structure.Viernes = { focus: 'Estabilidad / HIIT', exercises: exerciseRepository.comun.hiit };
+        if (workDays.length >= 3) {
+            structure[workDays[0]] = { focus: 'Bloque Enfoque A', exercises: repo.DiaA };
+            structure[workDays[1]] = { focus: 'Bloque Enfoque B', exercises: repo.DiaB };
+            structure[workDays[2]] = { focus: 'Estabilidad / HIIT', exercises: exerciseRepository.comun.hiit };
+        }
     } else if (days === 4) {
-        structure.Lunes = { focus: 'Acondicionamiento Principal A', exercises: repo.DiaA };
-        structure.Martes = { focus: 'Bloque de Potencia HIIT', exercises: exerciseRepository.comun.hiit };
-        structure.Jueves = { focus: 'Acondicionamiento Principal B', exercises: repo.DiaB };
-        structure.Viernes = { focus: 'Hipertrofia Estricta', exercises: repo.DiaA.slice(0, 5) };
+        if (workDays.length >= 4) {
+            structure[workDays[0]] = { focus: 'Acondicionamiento Principal A', exercises: repo.DiaA };
+            structure[workDays[1]] = { focus: 'Bloque de Potencia HIIT', exercises: exerciseRepository.comun.hiit };
+            structure[workDays[2]] = { focus: 'Acondicionamiento Principal B', exercises: repo.DiaB };
+            structure[workDays[3]] = { focus: 'Hipertrofia Estricta', exercises: repo.DiaA.slice(0, 5) };
+        }
     } else {
-        structure.Lunes = { focus: 'Bloque de Desarrollo I', exercises: repo.DiaA };
-        structure.Martes = { focus: 'Bloque de Desarrollo II', exercises: repo.DiaB };
-        structure.Miércoles = { focus: 'Quema / HIIT Complejo', exercises: exerciseRepository.comun.hiit };
-        structure.Viernes = { focus: 'Volumen y Aislamiento', exercises: repo.DiaA.slice(0, 5) };
-        structure.Sábado = { focus: 'Remate / Definición', exercises: repo.DiaB.slice(0, 5) };
+        if (workDays.length >= 5) {
+            structure[workDays[0]] = { focus: 'Bloque de Desarrollo I', exercises: repo.DiaA };
+            structure[workDays[1]] = { focus: 'Bloque de Desarrollo II', exercises: repo.DiaB };
+            structure[workDays[2]] = { focus: 'Quema / HIIT Complejo', exercises: exerciseRepository.comun.hiit };
+            structure[workDays[3]] = { focus: 'Volumen y Aislamiento', exercises: repo.DiaA.slice(0, 5) };
+            structure[workDays[4]] = { focus: 'Remate / Definición', exercises: repo.DiaB.slice(0, 5) };
+        }
     }
     return structure;
 }
@@ -702,7 +702,7 @@ async function resetSubstitution(originalId) {
 }
 
 // =========================================================================
-// PROGRESO DIARIO (con fecha, corrige el bug de arrastre entre semanas)
+// PROGRESO DIARIO
 // =========================================================================
 
 async function toggleExerciseStatus(effectiveId, originalId) {
@@ -721,7 +721,7 @@ async function toggleExerciseStatus(effectiveId, originalId) {
 }
 
 function renderDailyRoutine() {
-    const generatedPlan = dynamicRoutineGenerator(sessionState.daysCount, sessionState.focus);
+    const generatedPlan = dynamicRoutineGenerator(sessionState.daysCount, sessionState.focus, sessionState.restDays);
     const todayData = generatedPlan[currentDayName] || generatedPlan['Lunes'];
     const displayExercises = applySubstitutions(todayData.exercises);
 
@@ -793,7 +793,7 @@ function updateProgressBars(todayData) {
 }
 
 function renderWeeklyCalendar() {
-    const generatedPlan = dynamicRoutineGenerator(sessionState.daysCount, sessionState.focus);
+    const generatedPlan = dynamicRoutineGenerator(sessionState.daysCount, sessionState.focus, sessionState.restDays);
     const weeklyContainer = document.getElementById('weekly-distribution-container');
     weeklyContainer.innerHTML = '';
 
@@ -821,12 +821,22 @@ function renderWeeklyCalendar() {
 }
 
 // =========================================================================
-// NUTRICIÓN (calculada en vivo con biometría real)
+// NUTRICIÓN
 // =========================================================================
 
 function renderNutrition() {
     const nutrition = computeNutrition(sessionState);
-    const templates = (mealTemplates[sessionState.bodyType] || mealTemplates.Mesomorfo)[sessionState.goal];
+    const bodyTypeTemplates = mealTemplates[sessionState.bodyType] || mealTemplates.Mesomorfo;
+    const goalKey = sessionState.goal === 'loss' ? 'loss' : 'gain';
+    
+    // Rotación de opciones de comidas
+    const altKey = `${goalKey}_alt`;
+    const mealOptions = bodyTypeTemplates[goalKey] || [];
+    const altOptions = bodyTypeTemplates[altKey] || mealOptions;
+    
+    // Determina qué opción mostrar (basado en la semana)
+    const weekNumber = Math.floor((new Date() - new Date('2024-01-01')) / (1000 * 60 * 60 * 24 * 7)) % 2;
+    const templates = weekNumber === 0 ? mealOptions : altOptions;
 
     document.getElementById('total-macro-kcal').textContent = `${nutrition.targetKcal.toLocaleString('es')} kcal`;
     document.getElementById('total-macro-detail').textContent = `TMB ${nutrition.bmr} kcal · Mantenimiento ${nutrition.tdee} kcal`;
@@ -891,7 +901,7 @@ function renderWaterWidget() {
 }
 
 // =========================================================================
-// PESO CORPORAL + GRÁFICO HISTÓRICO (SVG, sin dependencias)
+// PESO CORPORAL + GRÁFICO
 // =========================================================================
 
 const weightLogForm = document.getElementById('weight-log-form');
@@ -919,7 +929,7 @@ weightLogForm.addEventListener('submit', async (e) => {
 });
 
 function renderWeightChart() {
-    const log = sessionState.weightLog.slice(-14); // últimas 14 entradas
+    const log = sessionState.weightLog.slice(-14);
     const label = document.getElementById('weight-current-label');
     const container = document.getElementById('weight-chart-container');
 
@@ -965,88 +975,71 @@ function renderWeightChart() {
 }
 
 // =========================================================================
-// CONSTRUCCIÓN COMPLETA DEL WORKSPACE
+// SELECCIÓN DE DÍAS DE DESCANSO (NUEVA CARACTERÍSTICA)
 // =========================================================================
 
-function buildUserWorkspace() {
-    const firstName = sessionState.name.split(' ')[0] || 'Usuario';
-    document.getElementById('greeting-name').textContent = `¡Hola, ${firstName}!`;
-    document.getElementById('sidebar-user-name').textContent = firstName;
-    document.getElementById('sidebar-user-email').textContent = sessionState.email;
-    document.getElementById('profile-full-name').textContent = sessionState.name;
-    document.getElementById('profile-email').textContent = sessionState.email;
-
-    document.getElementById('quick-gender-span').textContent = sessionState.gender;
-    const focusText = sessionState.focus === 'inferior' ? 'Tren Inferior' : sessionState.focus === 'superior' ? 'Tren Superior' : 'Estética Global';
-    document.getElementById('quick-focus-span').textContent = focusText;
-
-    const initials = sessionState.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'FI';
-    renderAvatar(initials);
-
-    const goalStr = sessionState.goal === 'gain' ? 'Superávit Muscular' : 'Déficit Calórico';
-    document.getElementById('profile-meta').textContent = `${sessionState.bodyType} • ${focusText} • ${goalStr} • ${sessionState.weightKg}kg / ${sessionState.heightCm}cm`;
-    document.getElementById('days-counter-badge').textContent = `${sessionState.daysCount} DÍAS`;
-
-    renderDailyRoutine();
-    renderWeeklyCalendar();
-    renderNutrition();
-    renderWaterWidget();
-    renderWeightChart();
-    renderReminderUI();
-    startReminderWatcher();
-
-    document.getElementById('screen-login').classList.add('opacity-0');
-    setTimeout(() => {
-        document.getElementById('screen-login').classList.add('hidden');
-        document.getElementById('screen-dashboard').classList.remove('hidden');
-        setTimeout(() => {
-            document.getElementById('screen-dashboard').classList.remove('opacity-0');
-            document.getElementById('screen-dashboard').classList.add('opacity-100');
-            lucide.createIcons();
-        }, 50);
-    }, 400);
+function openRestDaysModal() {
+    const modal = document.getElementById('rest-days-modal');
+    if (!modal) return;
+    
+    modal.classList.remove('hidden');
+    
+    // Renderizar checkboxes para cada día
+    const container = document.getElementById('rest-days-container');
+    container.innerHTML = '';
+    
+    daysOfWeekList.forEach((day, idx) => {
+        const isRest = sessionState.restDays.includes(idx);
+        container.innerHTML += `
+            <label class="flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${isRest ? 'border-brandPurple/40 bg-brandPurple/[0.05]' : 'border-neutral-800 bg-cardBg'}">
+                <input type="checkbox" value="${idx}" ${isRest ? 'checked' : ''} class="rest-day-checkbox w-4 h-4 rounded" onchange="updateRestDay(this)">
+                <span class="text-sm font-medium text-white">${day}</span>
+            </label>
+        `;
+    });
 }
+
+function closeRestDaysModal() {
+    const modal = document.getElementById('rest-days-modal');
+    if (modal) modal.classList.add('hidden');
+}
+
+async function updateRestDay(checkbox) {
+    const dayIdx = parseInt(checkbox.value);
+    if (checkbox.checked) {
+        if (!sessionState.restDays.includes(dayIdx)) {
+            sessionState.restDays.push(dayIdx);
+        }
+    } else {
+        sessionState.restDays = sessionState.restDays.filter(d => d !== dayIdx);
+    }
+    await saveSession();
+    buildUserWorkspace();
+    showToast('Días de descanso actualizados.', 'success');
+}
+
 // =========================================================================
-// AVATAR — mostrar iniciales o foto, y subirla a Supabase Storage
+// AVATAR
 // =========================================================================
 
 function renderAvatar(initials) {
-    const spots = [
-        document.getElementById('user-avatar'),
-        document.getElementById('sidebar-avatar'),
-        document.getElementById('profile-big-avatar'),
-        document.getElementById('edit-profile-avatar-preview')
-    ];
-
-    spots.forEach((el) => {
-        if (!el) return;
-        if (sessionState.avatarUrl) {
-            el.textContent = '';
-            el.style.backgroundImage = `url('${sessionState.avatarUrl}')`;
-            el.style.backgroundSize = 'cover';
-            el.style.backgroundPosition = 'center';
-        } else {
-            el.style.backgroundImage = '';
-            el.textContent = initials;
-        }
-    });
+    const avatarContainer = document.getElementById('profile-avatar');
+    if (!avatarContainer) return;
+    
+    if (sessionState.avatarUrl && sessionState.avatarUrl.startsWith('http')) {
+        avatarContainer.innerHTML = `<img src="${sessionState.avatarUrl}" alt="Avatar" class="w-full h-full object-cover rounded-full">`;
+    } else {
+        avatarContainer.textContent = initials;
+    }
 }
 
 async function uploadAvatar(file) {
     if (!file || !sessionState) return;
-    if (!file.type.startsWith('image/')) {
-        showToast('Selecciona un archivo de imagen válido.', 'error');
-        return;
-    }
-    if (file.size > 3 * 1024 * 1024) {
-        showToast('La imagen no puede pesar más de 3MB.', 'error');
-        return;
-    }
-
+    
     try {
         const ext = file.name.split('.').pop();
         const path = `${sessionState.id}/avatar.${ext}`;
-
+        
         const { error: uploadError } = await supabaseClient
             .storage
             .from('avatars')
@@ -1058,8 +1051,6 @@ async function uploadAvatar(file) {
             .from('avatars')
             .getPublicUrl(path);
 
-        // Le agregamos un timestamp para evitar que el navegador muestre la
-        // foto vieja cacheada cuando el usuario sube una nueva.
         sessionState.avatarUrl = `${publicUrlData.publicUrl}?t=${Date.now()}`;
 
         const { error: updateError } = await supabaseClient
@@ -1135,12 +1126,8 @@ editProfileForm.addEventListener('submit', async (e) => {
 });
 
 // =========================================================================
-// RECORDATORIOS — notificación local diaria mientras la app está abierta
+// RECORDATORIOS
 // =========================================================================
-// Nota: al ser un PWA sin servidor de push propio, esto revisa la hora cada
-// minuto MIENTRAS la app/pestaña está abierta (o corriendo en segundo plano
-// como PWA instalada). No dispara si el usuario cierra la app por completo.
-// Para push real con la app cerrada se necesitaría un backend con VAPID keys.
 
 let reminderIntervalId = null;
 
@@ -1196,11 +1183,11 @@ function checkReminder() {
     if (localStorage.getItem(alreadyNotifiedKey)) return;
 
     const completedToday = sessionState.completedByDate[today] || [];
-    const generatedPlan = dynamicRoutineGenerator(sessionState.daysCount, sessionState.focus);
+    const generatedPlan = dynamicRoutineGenerator(sessionState.daysCount, sessionState.focus, sessionState.restDays);
     const todayData = generatedPlan[currentDayName] || generatedPlan['Lunes'];
     const totalExercises = todayData.exercises.filter(ex => ex.id !== 'rest').length;
 
-    if (totalExercises > 0 && completedToday.length >= totalExercises) return; // ya completó todo
+    if (totalExercises > 0 && completedToday.length >= totalExercises) return;
 
     new Notification('TNY FIT', {
         body: '¡No olvides completar tu rutina de hoy! 💪',
@@ -1208,3 +1195,62 @@ function checkReminder() {
     });
     localStorage.setItem(alreadyNotifiedKey, '1');
 }
+
+// =========================================================================
+// TABS + WORKSPACE
+// =========================================================================
+
+function switchTab(tab) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.getElementById(`tab-${tab}`)?.classList.add('active');
+    document.querySelectorAll('[data-tab-mobile-target]').forEach(btn => {
+        btn.classList.toggle('text-white', btn.dataset.tabMobileTarget === tab);
+        btn.classList.toggle('text-neutral-500', btn.dataset.tabMobileTarget !== tab);
+    });
+}
+
+function buildUserWorkspace() {
+    const firstName = sessionState.name.split(' ')[0] || 'Usuario';
+    document.getElementById('greeting-name').textContent = `¡Hola, ${firstName}!`;
+    document.getElementById('sidebar-user-name').textContent = firstName;
+    document.getElementById('sidebar-user-email').textContent = sessionState.email;
+    document.getElementById('profile-full-name').textContent = sessionState.name;
+    document.getElementById('profile-email').textContent = sessionState.email;
+
+    document.getElementById('quick-gender-span').textContent = sessionState.gender;
+    const focusText = sessionState.focus === 'inferior' ? 'Tren Inferior' : sessionState.focus === 'superior' ? 'Tren Superior' : 'Estética Global';
+    document.getElementById('quick-focus-span').textContent = focusText;
+
+    const initials = sessionState.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'FI';
+    renderAvatar(initials);
+
+    const goalStr = sessionState.goal === 'gain' ? 'Superávit Muscular' : 'Déficit Calórico';
+    document.getElementById('profile-meta').textContent = `${sessionState.bodyType} • ${focusText} • ${goalStr} • ${sessionState.weightKg}kg / ${sessionState.heightCm}cm`;
+    document.getElementById('days-counter-badge').textContent = `${sessionState.daysCount} DÍAS`;
+
+    renderDailyRoutine();
+    renderWeeklyCalendar();
+    renderNutrition();
+    renderWaterWidget();
+    renderWeightChart();
+    renderReminderUI();
+    startReminderWatcher();
+
+    document.getElementById('screen-login').classList.add('opacity-0');
+    setTimeout(() => {
+        document.getElementById('screen-login').classList.add('hidden');
+        document.getElementById('screen-dashboard').classList.remove('hidden');
+        setTimeout(() => { document.getElementById('screen-dashboard').classList.remove('opacity-0'); }, 50);
+    }, 400);
+}
+
+// =========================================================================
+// INICIALIZACIÓN
+// =========================================================================
+
+document.addEventListener('DOMContentLoaded', () => {
+    checkActiveSession();
+    window.addEventListener('beforeinstallprompt', (e) => {
+        deferredInstallPrompt = e;
+    });
+});
