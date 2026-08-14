@@ -226,3 +226,28 @@ SELECT
     created_at,
     updated_at
 FROM public.profiles;
+
+-- ============================================================================
+-- TNY FIT — Migración: diario de comidas + rutina personalizada
+-- Corre esto UNA VEZ en: Supabase Dashboard → SQL Editor → New query → Run
+-- ============================================================================
+
+-- Diario de comidas del usuario, agrupado por fecha (YYYY-MM-DD):
+-- { "2026-08-14": [ { id, name, brand, qty, kcal, p, c, g }, ... ] }
+ALTER TABLE public.profiles
+ADD COLUMN IF NOT EXISTS food_log_by_date JSONB DEFAULT '{}'::jsonb;
+
+-- Rutina personalizada escrita a mano por el usuario, por día de la semana.
+-- Si un día tiene entradas aquí, se usa en vez de la rutina generada:
+-- { "Lunes": [ { id, t, d } ], "Martes": [...] , ... }
+ALTER TABLE public.profiles
+ADD COLUMN IF NOT EXISTS custom_routine JSONB DEFAULT '{}'::jsonb;
+
+-- ============================================================================
+-- NOTA IMPORTANTE — Login con Google (no se hace por SQL):
+-- Ve a Supabase Dashboard → Authentication → Providers → Google, actívalo
+-- y agrega tu Client ID / Client Secret de Google Cloud Console.
+-- En "Authentication → URL Configuration" agrega la URL donde corre tu app
+-- (ej. https://tudominio.com o http://localhost:xxxx) tanto en "Site URL"
+-- como en "Redirect URLs".
+-- ============================================================================

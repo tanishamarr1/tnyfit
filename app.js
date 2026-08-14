@@ -279,7 +279,9 @@ function profileRowToSessionState(row) {
         substitutions: row.substitutions || {},
         restDays: row.rest_days || [], // NUEVO: días de descanso seleccionados
         reminderEnabled: row.reminder_enabled || false,
-        reminderTime: row.reminder_time || '19:00'
+        reminderTime: row.reminder_time || '19:00',
+        foodLogByDate: row.food_log_by_date || {}, // NUEVO: diario de comidas
+        customRoutine: row.custom_routine || {} // NUEVO: rutina personalizada por día
     };
 }
 
@@ -312,7 +314,9 @@ async function insertProfile(profile) {
         substitutions: profile.substitutions,
         rest_days: profile.restDays || [], // NUEVO
         reminder_enabled: profile.reminderEnabled || false,
-        reminder_time: profile.reminderTime || '19:00'
+        reminder_time: profile.reminderTime || '19:00',
+        food_log_by_date: profile.foodLogByDate || {}, // NUEVO
+        custom_routine: profile.customRoutine || {} // NUEVO
     });
     if (error) throw error;
 }
@@ -338,7 +342,9 @@ async function saveSession() {
             substitutions: sessionState.substitutions,
             rest_days: sessionState.restDays || [], // NUEVO
             reminder_enabled: sessionState.reminderEnabled,
-            reminder_time: sessionState.reminderTime
+            reminder_time: sessionState.reminderTime,
+            food_log_by_date: sessionState.foodLogByDate || {}, // NUEVO
+            custom_routine: sessionState.customRoutine || {} // NUEVO
         })
         .eq('id', sessionState.id);
     if (error) throw error;
@@ -373,7 +379,13 @@ async function insertPendingProfileIfAny(session) {
 const WIZARD_TOTAL_STEPS = 4;
 let wizardStep = 1;
 
+// NUEVO: true cuando el wizard se está usando para completar el perfil de
+// un usuario que ya se autenticó por Google (se salta el Paso 1 de cuenta,
+// porque el correo/contraseña ya los maneja Google).
+let isOAuthCompletion = false;
+
 function goToRegister() {
+    isOAuthCompletion = false;
     document.getElementById('panel-signin').classList.add('hidden');
     document.getElementById('panel-register').classList.remove('hidden');
     wizardStep = 1;
@@ -381,6 +393,7 @@ function goToRegister() {
 }
 
 function goToSignin() {
+    isOAuthCompletion = false;
     document.getElementById('panel-register').classList.add('hidden');
     document.getElementById('panel-signin').classList.remove('hidden');
 }
@@ -400,7 +413,8 @@ function renderWizardStep() {
         dot.classList.toggle('bg-neutral-800', idx >= wizardStep);
     });
 
-    document.getElementById('wizard-back-btn').classList.toggle('hidden', wizardStep === 1);
+    const firstStep = isOAuthCompletion ? 2 : 1;
+    document.getElementById('wizard-back-btn').classList.toggle('hidden', wizardStep === firstStep);
     document.getElementById('wizard-next-btn').classList.toggle('hidden', wizardStep === WIZARD_TOTAL_STEPS);
     const submitBtn = document.getElementById('wizard-submit-btn');
     if (wizardStep === WIZARD_TOTAL_STEPS) {
@@ -443,7 +457,8 @@ function wizardNext() {
 }
 
 function wizardBack() {
-    if (wizardStep > 1) {
+    const firstStep = isOAuthCompletion ? 2 : 1;
+    if (wizardStep > firstStep) {
         wizardStep--;
         renderWizardStep();
     }
@@ -456,12 +471,62 @@ function wizardBack() {
 const registerForm = document.getElementById('register-form');
 registerForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    if (!validateWizardStep(1) || !validateWizardStep(2)) return;
+    if (!isOAuthCompletion && !validateWizardStep(1)) return;
+    if (!validateWizardStep(2)) return;
 
-    const email = document.getElementById('user-email').value.trim().toLowerCase();
-    const password = document.getElementById('user-password').value;
     const submitBtn = document.getElementById('wizard-submit-btn');
     submitBtn.disabled = true;
+
+    // ---- CASO: completar perfil tras iniciar sesión con Google ----
+    // La cuenta y el correo ya existen (los creó Google), así que no se
+    // llama a signUp(): solo se arma el perfil y se inserta en la tabla.
+    if (isOAuthCompletion) {
+        try {
+            const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+            if (userError || !user) throw userError || new Error('Sesión no encontrada.');
+
+            const newProfile = {
+                id: user.id,
+                email: user.email,
+                name: document.getElementById('user-name').value.trim() || (user.email || '').split('@')[0],
+                gender: document.getElementById('user-gender').value,
+                age: parseInt(document.getElementById('user-age').value),
+                weightKg: parseFloat(document.getElementById('user-weight').value),
+                heightCm: parseFloat(document.getElementById('user-height').value),
+                daysCount: parseInt(document.getElementById('training-days-count').value),
+                bodyType: document.getElementById('body-type').value,
+                focus: document.getElementById('training-focus').value,
+                goal: document.querySelector('input[name="fitness-goal"]:checked').value,
+                completedByDate: {},
+                waterByDate: {},
+                weightLog: [],
+                substitutions: {},
+                restDays: [],
+                reminderEnabled: false,
+                reminderTime: '19:00',
+                foodLogByDate: {},
+                customRoutine: {}
+            };
+            newProfile.weightLog.push({ date: todayKey(), kg: newProfile.weightKg });
+
+            await insertProfile(newProfile);
+            isOAuthCompletion = false;
+            registerForm.reset();
+            wizardStep = 1;
+            showToast(`¡Bienvenido, ${newProfile.name.split(' ')[0]}! Tu ecosistema fue generado.`, 'success');
+            await checkActiveSession();
+        } catch (err) {
+            console.error(err);
+            showToast(err.message || 'No se pudo crear tu perfil. Intenta de nuevo.', 'error');
+        } finally {
+            submitBtn.disabled = false;
+        }
+        return;
+    }
+
+    // ---- CASO NORMAL: registro con correo y contraseña ----
+    const email = document.getElementById('user-email').value.trim().toLowerCase();
+    const password = document.getElementById('user-password').value;
 
     try {
         const { data, error } = await supabaseClient.auth.signUp({ email, password });
@@ -485,7 +550,9 @@ registerForm.addEventListener('submit', async (e) => {
             substitutions: {},
             restDays: [], // NUEVO: vacío por defecto
             reminderEnabled: false,
-            reminderTime: '19:00'
+            reminderTime: '19:00',
+            foodLogByDate: {}, // NUEVO
+            customRoutine: {} // NUEVO
         };
         newProfile.weightLog.push({ date: todayKey(), kg: newProfile.weightKg });
 
@@ -509,6 +576,45 @@ registerForm.addEventListener('submit', async (e) => {
         submitBtn.disabled = false;
     }
 });
+
+// =========================================================================
+// LOGIN CON GOOGLE (Supabase OAuth)
+// =========================================================================
+
+async function signInWithGoogle() {
+    try {
+        const { error } = await supabaseClient.auth.signInWithOAuth({
+            provider: 'google',
+            options: { redirectTo: window.location.origin + window.location.pathname }
+        });
+        if (error) throw error;
+        // El navegador redirige a Google; el flujo continúa al volver.
+    } catch (err) {
+        console.error(err);
+        showToast('No se pudo iniciar sesión con Google.', 'error');
+    }
+}
+
+// Muestra el wizard de registro saltando el Paso 1 (cuenta), porque el
+// usuario ya se autenticó vía Google y su correo ya está confirmado.
+function startOAuthProfileCompletion(session) {
+    isOAuthCompletion = true;
+    document.getElementById('panel-signin').classList.add('hidden');
+    document.getElementById('panel-recovery').classList.add('hidden');
+    document.getElementById('panel-register').classList.remove('hidden');
+
+    const meta = session.user.user_metadata || {};
+    document.getElementById('user-name').value = meta.full_name || meta.name || '';
+    document.getElementById('user-email').value = session.user.email || '';
+    // Contraseña no aplica en este flujo: se completan con un valor válido
+    // para que el input required no bloquee (nunca se envían a signUp).
+    document.getElementById('user-password').value = 'google-oauth';
+    document.getElementById('user-password-confirm').value = 'google-oauth';
+
+    wizardStep = 2;
+    renderWizardStep();
+    showToast('Termina de configurar tu perfil para continuar.', 'info');
+}
 
 const signinForm = document.getElementById('signin-form');
 signinForm.addEventListener('submit', async (e) => {
@@ -567,8 +673,14 @@ async function checkActiveSession() {
             }
         }
 
+        // NUEVO: si sigue sin haber perfil (típico de un primer login con
+        // Google, que crea la sesión pero no una fila en `profiles`), se
+        // pide completar biometría/entrenamiento en vez de cerrar sesión.
         if (!profile) {
-            await logout();
+            document.getElementById('screen-dashboard').classList.add('hidden');
+            document.getElementById('screen-login').classList.remove('hidden');
+            startOAuthProfileCompletion(session);
+            loadingScreen.classList.add('hidden');
             return;
         }
         sessionState = profile;
@@ -711,6 +823,33 @@ function dynamicRoutineGenerator(days, focus, restDays = []) {
     return structure;
 }
 
+// =========================================================================
+// RUTINA PERSONALIZADA (texto libre) — se superpone a la generada
+// =========================================================================
+// Si el usuario escribió su propia rutina para un día (sessionState.customRoutine[dia]),
+// esa lista reemplaza por completo a los ejercicios generados automáticamente
+// para ese día. Los días sin rutina personalizada siguen usando el generador.
+function applyCustomOverlay(generatedPlan) {
+    const plan = { ...generatedPlan };
+    const custom = sessionState.customRoutine || {};
+    daysOfWeekList.forEach(day => {
+        const dayEntries = custom[day];
+        if (dayEntries && dayEntries.length > 0) {
+            plan[day] = {
+                focus: 'Rutina Personalizada',
+                exercises: dayEntries,
+                isCustom: true
+            };
+        }
+    });
+    return plan;
+}
+
+function getEffectivePlan() {
+    const generatedPlan = dynamicRoutineGenerator(sessionState.daysCount, sessionState.focus, sessionState.restDays);
+    return applyCustomOverlay(generatedPlan);
+}
+
 function getSubstitutionPool(focus) {
     const repo = exerciseRepository[focus] || exerciseRepository.balanceado;
     return [...repo.DiaA, ...repo.DiaB, ...exerciseRepository.comun.hiit];
@@ -768,9 +907,9 @@ async function toggleExerciseStatus(effectiveId, originalId) {
 }
 
 function renderDailyRoutine() {
-    const generatedPlan = dynamicRoutineGenerator(sessionState.daysCount, sessionState.focus, sessionState.restDays);
+    const generatedPlan = getEffectivePlan();
     const todayData = generatedPlan[currentDayName] || generatedPlan['Lunes'];
-    const displayExercises = applySubstitutions(todayData.exercises);
+    const displayExercises = todayData.isCustom ? todayData.exercises : applySubstitutions(todayData.exercises);
 
     document.getElementById('current-day-routine-title').textContent = `Enfoque: ${todayData.focus}`;
     document.getElementById('routine-focus-badge').textContent = currentDayName.toUpperCase();
@@ -785,6 +924,7 @@ function renderDailyRoutine() {
         const originalId = ex.originalId || ex.id;
         const isCompleted = completedToday.includes(originalId);
         const isRest = ex.id === 'rest';
+        const isCustomExercise = typeof ex.id === 'string' && ex.id.startsWith('custom_');
         const wasSubstituted = !!ex.originalId;
 
         dailyContainer.innerHTML += `
@@ -799,7 +939,7 @@ function renderDailyRoutine() {
                     </div>
                 </div>
                 <div class="flex items-center gap-1.5 shrink-0">
-                    ${!isRest ? `<button onclick="substituteExercise('${originalId}')" title="Cambiar ejercicio" class="w-7 h-7 rounded-full border border-neutral-800 text-neutral-500 hover:text-brandPurple hover:border-brandPurple/50 flex items-center justify-center transition-all">
+                    ${(!isRest && !isCustomExercise) ? `<button onclick="substituteExercise('${originalId}')" title="Cambiar ejercicio" class="w-7 h-7 rounded-full border border-neutral-800 text-neutral-500 hover:text-brandPurple hover:border-brandPurple/50 flex items-center justify-center transition-all">
                         <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
                     </button>` : ''}
                     <button onclick="toggleExerciseStatus('${ex.id}','${originalId}')" ${isRest ? 'disabled' : ''} class="w-6 h-6 rounded-full border flex items-center justify-center transition-all ${isCompleted ? 'bg-brandPurple border-brandPurple text-white' : 'border-neutral-700 text-transparent'} ${isRest ? 'opacity-30 cursor-not-allowed' : ''}">
@@ -840,13 +980,13 @@ function updateProgressBars(todayData) {
 }
 
 function renderWeeklyCalendar() {
-    const generatedPlan = dynamicRoutineGenerator(sessionState.daysCount, sessionState.focus, sessionState.restDays);
+    const generatedPlan = getEffectivePlan();
     const weeklyContainer = document.getElementById('weekly-distribution-container');
     weeklyContainer.innerHTML = '';
 
     Object.keys(generatedPlan).forEach(day => {
         const info = generatedPlan[day];
-        const displayExercises = applySubstitutions(info.exercises);
+        const displayExercises = info.isCustom ? info.exercises : applySubstitutions(info.exercises);
         const isToday = (day === currentDayName);
         let listHTML = '';
         displayExercises.forEach(e => {
@@ -858,13 +998,17 @@ function renderWeeklyCalendar() {
                 <div>
                     <div class="flex justify-between items-center mb-1">
                         <span class="text-xs font-bold text-white">${day} ${isToday ? '• HOY' : ''}</span>
-                        <span class="text-[10px] text-brandPurple font-mono font-medium">${info.focus}</span>
+                        <span class="text-[10px] ${info.isCustom ? 'text-emerald-400' : 'text-brandPurple'} font-mono font-medium">${info.focus}</span>
                     </div>
                     <ul class="space-y-1.5 pt-2 border-t border-neutral-900">${listHTML}</ul>
                 </div>
+                <button type="button" onclick="openCustomRoutineModal('${day}')" class="text-[10px] font-semibold text-neutral-500 hover:text-brandPurple flex items-center gap-1 pt-1">
+                    <i data-lucide="pencil" class="w-3 h-3"></i> Editar rutina de este día
+                </button>
             </div>
         `;
     });
+    lucide.createIcons();
 }
 
 // =========================================================================
@@ -905,6 +1049,8 @@ function renderNutrition() {
             </div>
         `;
     });
+
+    renderFoodLog();
 }
 
 function createMacroBarHTML(name, valLabel, color, value, max) {
@@ -920,6 +1066,165 @@ function createMacroBarHTML(name, valLabel, color, value, max) {
             </div>
         </div>
     `;
+}
+
+// =========================================================================
+// DIARIO DE COMIDAS — búsqueda en base de alimentos (Open Food Facts)
+// =========================================================================
+// Open Food Facts es una base de datos de alimentos libre y sin API key.
+// Se consulta por nombre y se obtienen los valores nutricionales por 100g,
+// que luego se escalan según la cantidad que el usuario indique.
+let lastFoodSearchResults = [];
+
+async function searchFoodDatabase(query) {
+    const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=8&fields=product_name,brands,nutriments`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('No se pudo consultar la base de alimentos.');
+    const data = await res.json();
+    return (data.products || [])
+        .filter(p => p.product_name && p.nutriments && p.nutriments['energy-kcal_100g'] != null)
+        .map((p, idx) => ({
+            idx,
+            name: p.product_name,
+            brand: p.brands ? p.brands.split(',')[0].trim() : '',
+            kcal100: Math.round(p.nutriments['energy-kcal_100g'] || 0),
+            p100: Math.round((p.nutriments['proteins_100g'] || 0) * 10) / 10,
+            c100: Math.round((p.nutriments['carbohydrates_100g'] || 0) * 10) / 10,
+            f100: Math.round((p.nutriments['fat_100g'] || 0) * 10) / 10
+        }));
+}
+
+const foodSearchForm = document.getElementById('food-search-form');
+foodSearchForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const input = document.getElementById('food-search-input');
+    const query = input.value.trim();
+    const resultsContainer = document.getElementById('food-search-results');
+    const btn = document.getElementById('food-search-btn');
+    if (!query) return;
+
+    btn.disabled = true;
+    resultsContainer.innerHTML = `<p class="text-[11px] text-neutral-500 text-center py-3">Buscando...</p>`;
+
+    try {
+        lastFoodSearchResults = await searchFoodDatabase(query);
+        renderFoodSearchResults();
+    } catch (err) {
+        console.error(err);
+        resultsContainer.innerHTML = `<p class="text-[11px] text-red-400 text-center py-3">No se pudo buscar. Revisa tu conexión e intenta de nuevo.</p>`;
+    } finally {
+        btn.disabled = false;
+    }
+});
+
+function renderFoodSearchResults() {
+    const resultsContainer = document.getElementById('food-search-results');
+    if (!resultsContainer) return;
+
+    if (lastFoodSearchResults.length === 0) {
+        resultsContainer.innerHTML = `<p class="text-[11px] text-neutral-500 text-center py-3">Sin resultados. Prueba con otro nombre.</p>`;
+        return;
+    }
+
+    resultsContainer.innerHTML = lastFoodSearchResults.map(food => `
+        <div class="flex items-center justify-between gap-2 p-3 rounded-xl bg-neutral-900 border border-neutral-800">
+            <div class="min-w-0">
+                <p class="text-xs font-semibold text-white truncate">${food.name}</p>
+                <p class="text-[10px] text-neutral-500 truncate">${food.brand ? food.brand + ' · ' : ''}${food.kcal100} kcal / 100g</p>
+            </div>
+            <div class="flex items-center gap-1.5 shrink-0">
+                <input type="number" min="1" value="100" id="food-qty-${food.idx}" class="w-16 bg-neutral-950 border border-neutral-800 rounded-lg px-2 py-1.5 text-white text-xs text-center focus:outline-none focus:border-brandPurple">
+                <span class="text-[9px] text-neutral-500">g</span>
+                <button type="button" onclick="addFoodLogEntry(${food.idx})" class="bg-brandPurple text-white rounded-lg w-7 h-7 flex items-center justify-center hover:opacity-90 transition-all shrink-0">
+                    <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                </button>
+            </div>
+        </div>
+    `).join('');
+    lucide.createIcons();
+}
+
+async function addFoodLogEntry(resultIdx) {
+    const food = lastFoodSearchResults.find(f => f.idx === resultIdx);
+    if (!food) return;
+    const qtyInput = document.getElementById(`food-qty-${resultIdx}`);
+    const qty = Math.max(parseFloat(qtyInput?.value) || 100, 1);
+    const factor = qty / 100;
+
+    const dateKey = todayKey();
+    if (!sessionState.foodLogByDate) sessionState.foodLogByDate = {};
+    if (!sessionState.foodLogByDate[dateKey]) sessionState.foodLogByDate[dateKey] = [];
+
+    sessionState.foodLogByDate[dateKey].push({
+        id: `food_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+        name: food.name,
+        brand: food.brand,
+        qty,
+        kcal: Math.round(food.kcal100 * factor),
+        p: Math.round(food.p100 * factor * 10) / 10,
+        c: Math.round(food.c100 * factor * 10) / 10,
+        g: Math.round(food.f100 * factor * 10) / 10
+    });
+
+    await saveSession();
+    showToast(`"${food.name}" agregado a tu diario.`, 'success');
+    renderFoodLog();
+}
+
+async function removeFoodLogEntry(entryId) {
+    const dateKey = todayKey();
+    const entries = sessionState.foodLogByDate?.[dateKey] || [];
+    sessionState.foodLogByDate[dateKey] = entries.filter(e => e.id !== entryId);
+    await saveSession();
+    renderFoodLog();
+}
+
+function renderFoodLog() {
+    const listContainer = document.getElementById('food-log-list');
+    const emptyNote = document.getElementById('food-log-empty-note');
+    const barsContainer = document.getElementById('food-log-macro-bars');
+    const totalKcalLabel = document.getElementById('food-log-total-kcal');
+    if (!listContainer || !barsContainer || !totalKcalLabel) return;
+
+    const dateKey = todayKey();
+    const entries = (sessionState.foodLogByDate || {})[dateKey] || [];
+
+    listContainer.innerHTML = '';
+    if (entries.length === 0) {
+        emptyNote?.classList.remove('hidden');
+    } else {
+        emptyNote?.classList.add('hidden');
+        entries.forEach(entry => {
+            listContainer.innerHTML += `
+                <div class="flex items-center justify-between gap-2 p-3 rounded-xl bg-neutral-950 border border-neutral-900">
+                    <div class="min-w-0">
+                        <p class="text-xs font-semibold text-white truncate">${entry.name}</p>
+                        <p class="text-[10px] text-neutral-500">${entry.qty}g · ${entry.kcal} kcal · P${entry.p}g C${entry.c}g G${entry.g}g</p>
+                    </div>
+                    <button type="button" onclick="removeFoodLogEntry('${entry.id}')" class="text-neutral-500 hover:text-red-400 transition-colors shrink-0">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            `;
+        });
+    }
+
+    const totals = entries.reduce((acc, e) => ({
+        kcal: acc.kcal + e.kcal,
+        p: acc.p + e.p,
+        c: acc.c + e.c,
+        g: acc.g + e.g
+    }), { kcal: 0, p: 0, c: 0, g: 0 });
+
+    const nutrition = computeNutrition(sessionState);
+    totalKcalLabel.textContent = `${Math.round(totals.kcal).toLocaleString('es')} / ${nutrition.targetKcal.toLocaleString('es')} kcal`;
+
+    barsContainer.innerHTML = `
+        ${createMacroBarHTML('Proteínas', `${Math.round(totals.p)}g / ${nutrition.macros.p}g`, 'bg-purple-500', totals.p, nutrition.macros.p)}
+        ${createMacroBarHTML('Carbohidratos', `${Math.round(totals.c)}g / ${nutrition.macros.c}g`, 'bg-yellow-500', totals.c, nutrition.macros.c)}
+        ${createMacroBarHTML('Grasas', `${Math.round(totals.g)}g / ${nutrition.macros.g}g`, 'bg-emerald-500', totals.g, nutrition.macros.g)}
+    `;
+    lucide.createIcons();
 }
 
 // =========================================================================
@@ -1063,6 +1368,121 @@ async function updateRestDay(checkbox) {
     await saveSession();
     buildUserWorkspace();
     showToast('Días de descanso actualizados.', 'success');
+}
+
+// =========================================================================
+// RUTINA PERSONALIZADA — modal de edición (texto libre por día)
+// =========================================================================
+
+let customRoutineActiveDay = currentDayName;
+
+function openCustomRoutineModal(day) {
+    const modal = document.getElementById('custom-routine-modal');
+    if (!modal) return;
+    customRoutineActiveDay = day || currentDayName;
+    modal.classList.remove('hidden');
+    renderCustomRoutineDayTabs();
+    renderCustomRoutineList();
+}
+
+function closeCustomRoutineModal() {
+    const modal = document.getElementById('custom-routine-modal');
+    if (modal) modal.classList.add('hidden');
+}
+
+function renderCustomRoutineDayTabs() {
+    const container = document.getElementById('custom-routine-day-tabs');
+    if (!container) return;
+    container.innerHTML = daysOfWeekList.map(day => `
+        <button type="button" onclick="selectCustomRoutineDay('${day}')"
+            class="shrink-0 px-3 py-1.5 rounded-full text-[10px] font-semibold uppercase tracking-wider transition-all ${day === customRoutineActiveDay ? 'bg-brandPurple text-white' : 'bg-neutral-900 text-neutral-400 border border-neutral-800 hover:text-white'}">
+            ${day.slice(0, 3)}
+        </button>
+    `).join('');
+}
+
+function selectCustomRoutineDay(day) {
+    customRoutineActiveDay = day;
+    renderCustomRoutineDayTabs();
+    renderCustomRoutineList();
+}
+
+function renderCustomRoutineList() {
+    const list = document.getElementById('custom-routine-list');
+    const emptyNote = document.getElementById('custom-routine-empty-note');
+    if (!list) return;
+
+    const entries = (sessionState.customRoutine || {})[customRoutineActiveDay] || [];
+    list.innerHTML = '';
+
+    if (entries.length === 0) {
+        if (emptyNote) emptyNote.classList.remove('hidden');
+    } else {
+        if (emptyNote) emptyNote.classList.add('hidden');
+        entries.forEach(ex => {
+            list.innerHTML += `
+                <div class="flex items-center justify-between p-3 rounded-xl bg-neutral-900 border border-neutral-800">
+                    <div class="min-w-0">
+                        <p class="text-xs font-semibold text-white truncate">${ex.t}</p>
+                        <p class="text-[10px] text-neutral-500 truncate">${ex.d}</p>
+                    </div>
+                    <button type="button" onclick="removeCustomRoutineExercise('${ex.id}')" class="text-neutral-500 hover:text-red-400 transition-colors shrink-0 ml-2">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            `;
+        });
+    }
+    lucide.createIcons();
+}
+
+async function addCustomRoutineExercise() {
+    const nameInput = document.getElementById('custom-exercise-name-input');
+    const detailInput = document.getElementById('custom-exercise-detail-input');
+    const name = nameInput.value.trim();
+    const detail = detailInput.value.trim();
+
+    if (!name) {
+        showToast('Escribe el nombre del ejercicio.', 'error');
+        return;
+    }
+
+    if (!sessionState.customRoutine) sessionState.customRoutine = {};
+    if (!sessionState.customRoutine[customRoutineActiveDay]) sessionState.customRoutine[customRoutineActiveDay] = [];
+
+    sessionState.customRoutine[customRoutineActiveDay].push({
+        id: `custom_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+        t: name,
+        c: 'Personalizado',
+        d: detail || 'Series y repeticiones a tu criterio'
+    });
+
+    await saveSession();
+    nameInput.value = '';
+    detailInput.value = '';
+    renderCustomRoutineList();
+    buildUserWorkspace();
+    showToast('Ejercicio agregado a tu rutina.', 'success');
+}
+
+async function removeCustomRoutineExercise(exerciseId) {
+    const entries = (sessionState.customRoutine || {})[customRoutineActiveDay] || [];
+    sessionState.customRoutine[customRoutineActiveDay] = entries.filter(e => e.id !== exerciseId);
+    await saveSession();
+    renderCustomRoutineList();
+    buildUserWorkspace();
+}
+
+// Vuelve a usar el generador automático para el día activo, descartando
+// la rutina escrita a mano para ese día.
+async function resetCustomRoutineDay() {
+    if (sessionState.customRoutine) {
+        sessionState.customRoutine[customRoutineActiveDay] = [];
+    }
+    await saveSession();
+    renderCustomRoutineList();
+    buildUserWorkspace();
+    showToast(`Se restauró el generador automático para ${customRoutineActiveDay}.`, 'success');
 }
 
 // =========================================================================
@@ -1236,7 +1656,7 @@ function checkReminder() {
     if (localStorage.getItem(alreadyNotifiedKey)) return;
 
     const completedToday = sessionState.completedByDate[today] || [];
-    const generatedPlan = dynamicRoutineGenerator(sessionState.daysCount, sessionState.focus, sessionState.restDays);
+    const generatedPlan = getEffectivePlan();
     const todayData = generatedPlan[currentDayName] || generatedPlan['Lunes'];
     const totalExercises = todayData.exercises.filter(ex => ex.id !== 'rest').length;
 
@@ -1301,9 +1721,22 @@ function buildUserWorkspace() {
 // INICIALIZACIÓN
 // =========================================================================
 
+// FIX: el botón "Instalar App" del sidebar llamaba a triggerInstall(), que
+// nunca estaba definida, así que el botón no hacía nada al hacer clic.
+async function triggerInstall() {
+    if (!deferredInstallPrompt) return;
+    deferredInstallPrompt.prompt();
+    const { outcome } = await deferredInstallPrompt.userChoice;
+    if (outcome === 'accepted') showToast('¡TNY FIT se está instalando!', 'success');
+    deferredInstallPrompt = null;
+    document.getElementById('pwa-install-btn')?.classList.add('hidden');
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     checkActiveSession();
     window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
         deferredInstallPrompt = e;
+        document.getElementById('pwa-install-btn')?.classList.remove('hidden');
     });
 });
