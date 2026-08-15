@@ -1,5 +1,5 @@
 
-const DONATION_LINK = 'paypal.me/TanishaMaria'; // TODO: reemplaza con tu link real
+const DONATION_LINK = 'https://paypal.me/TanishaMaria'; // TODO: reemplaza con tu link real
 const DONATION_PAYMENT_INFO = ''; // TODO: reemplaza con tus datos reales
 
 // ---- BANCO EXTENSO DE EJERCICIOS CLASIFICADOS POR ENFOQUE ----
