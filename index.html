@@ -558,6 +558,41 @@
                                 <span class="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">Hora</span>
                                 <input type="time" id="reminder-time-input" value="19:00" class="bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-brandPurple transition-colors">
                             </div>
+                            <div class="pt-1 space-y-2">
+                                <span class="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">Recordarme sobre</span>
+                                <div class="flex flex-wrap gap-2">
+                                    <label class="flex items-center gap-1.5 bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-1.5 cursor-pointer">
+                                        <input type="checkbox" id="reminder-type-routine" class="accent-brandPurple w-3.5 h-3.5">
+                                        <span class="text-[10px] text-neutral-300">Rutina</span>
+                                    </label>
+                                    <label class="flex items-center gap-1.5 bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-1.5 cursor-pointer">
+                                        <input type="checkbox" id="reminder-type-water" class="accent-brandPurple w-3.5 h-3.5">
+                                        <span class="text-[10px] text-neutral-300">Agua</span>
+                                    </label>
+                                    <label class="flex items-center gap-1.5 bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-1.5 cursor-pointer">
+                                        <input type="checkbox" id="reminder-type-food" class="accent-brandPurple w-3.5 h-3.5">
+                                        <span class="text-[10px] text-neutral-300">Comida</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-5 rounded-2xl bg-cardBg border border-neutral-800 space-y-3">
+                            <div class="flex items-center gap-2">
+                                <i data-lucide="heart" class="w-4 h-4 text-brandPurple"></i>
+                                <span class="text-xs font-bold uppercase tracking-wider text-neutral-400">Apoya este proyecto</span>
+                            </div>
+                            <p class="text-[11px] text-neutral-400 leading-relaxed">Si TNY FIT te resultó útil, puedes invitar un café para seguir mejorándola.</p>
+                            <a id="donation-link-btn" href="#" target="_blank" rel="noopener noreferrer" class="w-full bg-brandPurple text-white text-xs font-semibold rounded-xl py-2.5 flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.99] transition-all">
+                                <i data-lucide="coffee" class="w-3.5 h-3.5"></i>
+                                <span>Invitarme un café</span>
+                            </a>
+                            <div class="flex items-center justify-between gap-2 bg-neutral-950 border border-neutral-900 rounded-xl px-3 py-2.5">
+                                <span id="donation-payment-info" class="text-[10px] text-neutral-400 truncate"></span>
+                                <button type="button" onclick="copyDonationInfo()" title="Copiar" class="text-neutral-500 hover:text-brandPurple transition-colors shrink-0">
+                                    <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                                </button>
+                            </div>
                         </div>
 
                         <div class="bg-cardBg border border-neutral-800 rounded-2xl divide-y divide-neutral-900 overflow-hidden shadow-lg">
@@ -566,6 +601,8 @@
                                 <i data-lucide="log-out" class="w-4 h-4"></i>
                             </button>
                         </div>
+
+                        <p class="text-center text-[11px] text-neutral-600 pt-1">Hecha por <span class="text-neutral-400 font-semibold">Tanisha Maria</span></p>
                     </div>
 
                 </div>

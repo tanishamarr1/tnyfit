@@ -1,8 +1,6 @@
-// =========================================================================
-// TNY FIT — Motor de aplicación v2.0
-// Mejoras: Selección de días de descanso, banco de 100+ ejercicios,
-// nutrición variada y económica, mejor rotación
-// =========================================================================
+
+const DONATION_LINK = 'paypal.me/TanishaMaria'; // TODO: reemplaza con tu link real
+const DONATION_PAYMENT_INFO = ''; // TODO: reemplaza con tus datos reales
 
 // ---- BANCO EXTENSO DE EJERCICIOS CLASIFICADOS POR ENFOQUE ----
 const exerciseRepository = {
@@ -280,6 +278,7 @@ function profileRowToSessionState(row) {
         restDays: row.rest_days || [], // NUEVO: días de descanso seleccionados
         reminderEnabled: row.reminder_enabled || false,
         reminderTime: row.reminder_time || '19:00',
+        reminderTypes: row.reminder_types || { routine: true, water: false, food: false }, // NUEVO
         foodLogByDate: row.food_log_by_date || {}, // NUEVO: diario de comidas
         customRoutine: row.custom_routine || {} // NUEVO: rutina personalizada por día
     };
@@ -315,6 +314,7 @@ async function insertProfile(profile) {
         rest_days: profile.restDays || [], // NUEVO
         reminder_enabled: profile.reminderEnabled || false,
         reminder_time: profile.reminderTime || '19:00',
+        reminder_types: profile.reminderTypes || { routine: true, water: false, food: false }, // NUEVO
         food_log_by_date: profile.foodLogByDate || {}, // NUEVO
         custom_routine: profile.customRoutine || {} // NUEVO
     });
@@ -343,6 +343,7 @@ async function saveSession() {
             rest_days: sessionState.restDays || [], // NUEVO
             reminder_enabled: sessionState.reminderEnabled,
             reminder_time: sessionState.reminderTime,
+            reminder_types: sessionState.reminderTypes || { routine: true, water: false, food: false }, // NUEVO
             food_log_by_date: sessionState.foodLogByDate || {}, // NUEVO
             custom_routine: sessionState.customRoutine || {} // NUEVO
         })
@@ -504,6 +505,7 @@ registerForm.addEventListener('submit', async (e) => {
                 restDays: [],
                 reminderEnabled: false,
                 reminderTime: '19:00',
+                reminderTypes: { routine: true, water: false, food: false },
                 foodLogByDate: {},
                 customRoutine: {}
             };
@@ -551,6 +553,7 @@ registerForm.addEventListener('submit', async (e) => {
             restDays: [], // NUEVO: vacío por defecto
             reminderEnabled: false,
             reminderTime: '19:00',
+            reminderTypes: { routine: true, water: false, food: false }, // NUEVO
             foodLogByDate: {}, // NUEVO
             customRoutine: {} // NUEVO
         };
@@ -1611,6 +1614,14 @@ function renderReminderUI() {
 
     toggle.checked = !!sessionState.reminderEnabled;
     timeInput.value = sessionState.reminderTime || '19:00';
+
+    const types = sessionState.reminderTypes || { routine: true, water: false, food: false };
+    const routineBox = document.getElementById('reminder-type-routine');
+    const waterBox = document.getElementById('reminder-type-water');
+    const foodBox = document.getElementById('reminder-type-food');
+    if (routineBox) routineBox.checked = types.routine !== false;
+    if (waterBox) waterBox.checked = !!types.water;
+    if (foodBox) foodBox.checked = !!types.food;
 }
 
 async function handleReminderToggle(checked) {
@@ -1634,8 +1645,21 @@ async function handleReminderTimeChange(value) {
     showToast('Hora del recordatorio actualizada.', 'success');
 }
 
+// NUEVO: activa/desactiva qué avisos incluir en el recordatorio diario
+// (rutina, agua, comida). Todos comparten la misma hora configurada arriba.
+async function handleReminderTypeChange(type, checked) {
+    if (!sessionState.reminderTypes) {
+        sessionState.reminderTypes = { routine: true, water: false, food: false };
+    }
+    sessionState.reminderTypes[type] = checked;
+    await saveSession();
+}
+
 document.getElementById('reminder-toggle')?.addEventListener('change', (e) => handleReminderToggle(e.target.checked));
 document.getElementById('reminder-time-input')?.addEventListener('change', (e) => handleReminderTimeChange(e.target.value));
+document.getElementById('reminder-type-routine')?.addEventListener('change', (e) => handleReminderTypeChange('routine', e.target.checked));
+document.getElementById('reminder-type-water')?.addEventListener('change', (e) => handleReminderTypeChange('water', e.target.checked));
+document.getElementById('reminder-type-food')?.addEventListener('change', (e) => handleReminderTypeChange('food', e.target.checked));
 
 function startReminderWatcher() {
     if (reminderIntervalId) clearInterval(reminderIntervalId);
@@ -1655,18 +1679,58 @@ function checkReminder() {
     const alreadyNotifiedKey = `tnyfit_reminder_sent_${today}`;
     if (localStorage.getItem(alreadyNotifiedKey)) return;
 
-    const completedToday = sessionState.completedByDate[today] || [];
-    const generatedPlan = getEffectivePlan();
-    const todayData = generatedPlan[currentDayName] || generatedPlan['Lunes'];
-    const totalExercises = todayData.exercises.filter(ex => ex.id !== 'rest').length;
+    const types = sessionState.reminderTypes || { routine: true, water: false, food: false };
+    const pendingMessages = [];
 
-    if (totalExercises > 0 && completedToday.length >= totalExercises) return;
+    if (types.routine !== false) {
+        const completedToday = sessionState.completedByDate[today] || [];
+        const generatedPlan = getEffectivePlan();
+        const todayData = generatedPlan[currentDayName] || generatedPlan['Lunes'];
+        const totalExercises = todayData.exercises.filter(ex => ex.id !== 'rest').length;
+        if (totalExercises > 0 && completedToday.length < totalExercises) {
+            pendingMessages.push('completar tu rutina de hoy 💪');
+        }
+    }
+
+    if (types.water) {
+        const currentMl = sessionState.waterByDate[today] || 0;
+        const goalMl = getWaterGoalMl();
+        if (currentMl < goalMl) {
+            pendingMessages.push('tomar más agua 💧');
+        }
+    }
+
+    if (types.food) {
+        const entriesToday = (sessionState.foodLogByDate || {})[today] || [];
+        if (entriesToday.length === 0) {
+            pendingMessages.push('registrar tus comidas de hoy 🍽️');
+        }
+    }
+
+    if (pendingMessages.length === 0) return;
 
     new Notification('TNY FIT', {
-        body: '¡No olvides completar tu rutina de hoy! 💪',
+        body: `No olvides: ${pendingMessages.join(', ')}`,
         icon: 'TNY SIN FONDO.png'
     });
     localStorage.setItem(alreadyNotifiedKey, '1');
+}
+
+// =========================================================================
+// DONACIONES
+// =========================================================================
+
+function renderDonationInfo() {
+    const linkBtn = document.getElementById('donation-link-btn');
+    const infoLabel = document.getElementById('donation-payment-info');
+    if (linkBtn) linkBtn.href = DONATION_LINK;
+    if (infoLabel) infoLabel.textContent = DONATION_PAYMENT_INFO;
+}
+
+function copyDonationInfo() {
+    navigator.clipboard.writeText(DONATION_PAYMENT_INFO)
+        .then(() => showToast('Datos copiados al portapapeles.', 'success'))
+        .catch(() => showToast('No se pudo copiar. Cópialo manualmente.', 'error'));
 }
 
 // =========================================================================
@@ -1707,6 +1771,7 @@ function buildUserWorkspace() {
     renderWaterWidget();
     renderWeightChart();
     renderReminderUI();
+    renderDonationInfo();
     startReminderWatcher();
 
     document.getElementById('screen-login').classList.add('opacity-0');
