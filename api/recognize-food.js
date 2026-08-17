@@ -1,13 +1,12 @@
 // =============================================================================
 // TNY FIT — Función serverless de Vercel: reconocimiento de comida por foto
+// USANDO OPENAI VISION (ChatGPT) EN LUGAR DE GEMINI
 // =============================================================================
-// Esta función corre en el servidor de Vercel, NUNCA en el navegador, así que
-// la variable GEMINI_API_KEY nunca queda expuesta al público (a diferencia de
-// DONATION_LINK en app.js, que sí es público porque no es sensible).
+// Esta función corre en el servidor de Vercel, así que la variable
+// OPENAI_API_KEY nunca queda expuesta al público.
 //
 // Configúrala en: Vercel Dashboard → tu proyecto → Settings →
-// Environment Variables → Name: GEMINI_API_KEY, Value: tu clave de
-// aistudio.google.com/apikey
+// Environment Variables → Name: OPENAI_API_KEY
 // =============================================================================
 
 module.exports = async function handler(req, res) {
@@ -16,9 +15,9 @@ module.exports = async function handler(req, res) {
         return;
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
-        res.status(500).json({ error: 'GEMINI_API_KEY no está configurada en Vercel.' });
+        res.status(500).json({ error: 'OPENAI_API_KEY no está configurada en Vercel.' });
         return;
     }
 
@@ -35,32 +34,46 @@ Responde ÚNICAMENTE con un objeto JSON válido, sin texto adicional, con este f
 Si no logras identificar comida en la imagen, responde: {"name": null}`;
 
     try {
-        const geminiRes = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-            {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{
-                        parts: [
-                            { text: prompt },
-                            { inline_data: { mime_type: mimeType || 'image/jpeg', data: imageBase64 } }
+        const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: 'gpt-4o-mini',
+                messages: [
+                    {
+                        role: 'user',
+                        content: [
+                            {
+                                type: 'text',
+                                text: prompt
+                            },
+                            {
+                                type: 'image_url',
+                                image_url: {
+                                    url: `data:${mimeType || 'image/jpeg'};base64,${imageBase64}`
+                                }
+                            }
                         ]
-                    }],
-                    generationConfig: { response_mime_type: 'application/json' }
-                })
-            }
-        );
+                    }
+                ],
+                temperature: 0.7,
+                response_format: { type: 'json_object' }
+            })
+        });
 
-        if (!geminiRes.ok) {
-            const errText = await geminiRes.text();
-            console.error('Gemini API error:', geminiRes.status, errText);
-            res.status(502).json({ error: `La IA no pudo procesar la imagen (código ${geminiRes.status}).` });
+        if (!openaiRes.ok) {
+            const errText = await openaiRes.text();
+            console.error('OpenAI API error:', openaiRes.status, errText);
+            res.status(502).json({ error: `La IA no pudo procesar la imagen (código ${openaiRes.status}).` });
             return;
         }
 
-        const geminiData = await geminiRes.json();
-        const rawText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text;
+        const openaiData = await openaiRes.json();
+        const rawText = openaiData?.choices?.[0]?.message?.content;
+        
         if (!rawText) {
             res.status(502).json({ error: 'Respuesta vacía de la IA.' });
             return;
