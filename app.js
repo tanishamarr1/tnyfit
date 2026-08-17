@@ -1,4 +1,3 @@
-
 const DONATION_LINK = 'https://paypal.me/TanishaMaria'; // TODO: reemplaza con tu link real
 const DONATION_PAYMENT_INFO = 'PayPal: paypal.me/TanishaMaria'; // TODO: reemplaza con tus datos reales
 
@@ -1080,21 +1079,53 @@ function createMacroBarHTML(name, valLabel, color, value, max) {
 let lastFoodSearchResults = [];
 
 async function searchFoodDatabase(query) {
-    const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=8&fields=product_name,brands,nutriments`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('No se pudo consultar la base de alimentos.');
-    const data = await res.json();
-    return (data.products || [])
-        .filter(p => p.product_name && p.nutriments && p.nutriments['energy-kcal_100g'] != null)
-        .map((p, idx) => ({
-            idx,
-            name: p.product_name,
-            brand: p.brands ? p.brands.split(',')[0].trim() : '',
-            kcal100: Math.round(p.nutriments['energy-kcal_100g'] || 0),
-            p100: Math.round((p.nutriments['proteins_100g'] || 0) * 10) / 10,
-            c100: Math.round((p.nutriments['carbohydrates_100g'] || 0) * 10) / 10,
-            f100: Math.round((p.nutriments['fat_100g'] || 0) * 10) / 10
-        }));
+    const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=20&fields=product_name,brands,nutriments`;
+    
+    try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`Error HTTP ${res.status}`);
+        
+        const data = await res.json();
+        if (!data.products || data.products.length === 0) {
+            throw new Error('Sin resultados');
+        }
+        
+        return (data.products || [])
+            .filter(p => {
+                // Validaciones más estrictas
+                if (!p.product_name || p.product_name.trim().length < 2) return false;
+                if (!p.nutriments) return false;
+                
+                const kcal = p.nutriments['energy-kcal_100g'];
+                const protein = p.nutriments['proteins_100g'];
+                const carbs = p.nutriments['carbohydrates_100g'];
+                const fat = p.nutriments['fat_100g'];
+                
+                // Rechaza productos sin información nutricional mínima
+                if (kcal == null || (protein == null && carbs == null && fat == null)) {
+                    return false;
+                }
+                
+                // Rechaza valores anómalos (ej: 9000+ kcal por 100g)
+                if (kcal > 900) return false;
+                
+                return true;
+            })
+            .map((p, idx) => ({
+                idx,
+                name: p.product_name.trim(),
+                brand: p.brands ? p.brands.split(',')[0].trim() : '',
+                kcal100: Math.round(p.nutriments['energy-kcal_100g'] || 0),
+                p100: Math.round((p.nutriments['proteins_100g'] || 0) * 10) / 10,
+                c100: Math.round((p.nutriments['carbohydrates_100g'] || 0) * 10) / 10,
+                f100: Math.round((p.nutriments['fat_100g'] || 0) * 10) / 10
+            }))
+            .slice(0, 8); // Limita a 8 resultados
+            
+    } catch (err) {
+        console.error('Search error:', err);
+        throw new Error(`Error al buscar: ${err.message}`);
+    }
 }
 
 const foodSearchForm = document.getElementById('food-search-form');
@@ -1149,29 +1180,59 @@ function renderFoodSearchResults() {
 
 async function addFoodLogEntry(resultIdx) {
     const food = lastFoodSearchResults.find(f => f.idx === resultIdx);
-    if (!food) return;
+    if (!food) {
+        showToast('Error: No se encontró la comida seleccionada.', 'error');
+        return;
+    }
+    
     const qtyInput = document.getElementById(`food-qty-${resultIdx}`);
-    const qty = Math.max(parseFloat(qtyInput?.value) || 100, 1);
+    if (!qtyInput) {
+        showToast('Error: No se pudo leer la cantidad.', 'error');
+        return;
+    }
+    
+    const qty = Math.max(parseFloat(qtyInput.value) || 100, 1);
     const factor = qty / 100;
 
+    // Inicializa estructuras de datos correctamente
     const dateKey = todayKey();
+    if (!sessionState) sessionState = {};
     if (!sessionState.foodLogByDate) sessionState.foodLogByDate = {};
     if (!sessionState.foodLogByDate[dateKey]) sessionState.foodLogByDate[dateKey] = [];
 
-    sessionState.foodLogByDate[dateKey].push({
-        id: `food_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-        name: food.name,
-        brand: food.brand,
-        qty,
+    // Crea el objeto de entrada correctamente
+    const entry = {
+        id: `food_${Date.now()}_${Math.floor(Math.random() * 10000)}`,
+        name: food.name || 'Alimento sin nombre',
+        brand: food.brand || '',
+        qty: Math.round(qty * 10) / 10,
         kcal: Math.round(food.kcal100 * factor),
         p: Math.round(food.p100 * factor * 10) / 10,
         c: Math.round(food.c100 * factor * 10) / 10,
-        g: Math.round(food.f100 * factor * 10) / 10
-    });
+        f: Math.round(food.f100 * factor * 10) / 10
+    };
 
-    await saveSession();
-    showToast(`"${food.name}" agregado a tu diario.`, 'success');
-    renderFoodLog();
+    // Valida que los valores sean numéricos
+    if (isNaN(entry.kcal) || isNaN(entry.p) || isNaN(entry.c) || isNaN(entry.f)) {
+        showToast('Error: Datos nutricionales inválidos.', 'error');
+        return;
+    }
+
+    sessionState.foodLogByDate[dateKey].push(entry);
+
+    try {
+        await saveSession();
+        showToast(`"${food.name}" ✓ agregado a tu diario.`, 'success');
+        renderFoodLog();
+        
+        // Limpia el input
+        const input = document.getElementById('food-search-input');
+        if (input) input.value = '';
+    } catch (err) {
+        console.error('Error saving:', err);
+        showToast('Error al guardar. Intenta de nuevo.', 'error');
+        sessionState.foodLogByDate[dateKey].pop(); // Revierte el cambio
+    }
 }
 
 async function removeFoodLogEntry(entryId) {
@@ -1202,7 +1263,7 @@ function renderFoodLog() {
                 <div class="flex items-center justify-between gap-2 p-3 rounded-xl bg-neutral-950 border border-neutral-900">
                     <div class="min-w-0">
                         <p class="text-xs font-semibold text-white truncate">${entry.name}</p>
-                        <p class="text-[10px] text-neutral-500">${entry.qty}g · ${entry.kcal} kcal · P${entry.p}g C${entry.c}g G${entry.g}g</p>
+                        <p class="text-[10px] text-neutral-500">${entry.qty}g · ${entry.kcal} kcal · P${entry.p}g C${entry.c}g F${entry.f}g</p>
                     </div>
                     <button type="button" onclick="removeFoodLogEntry('${entry.id}')" class="text-neutral-500 hover:text-red-400 transition-colors shrink-0">
                         <i data-lucide="trash-2" class="w-4 h-4"></i>
@@ -1321,28 +1382,76 @@ async function lookupBarcodeManual() {
 
 async function lookupBarcode(barcode) {
     const resultContainer = document.getElementById('scan-result-container');
-    resultContainer.innerHTML = `<p class="text-[11px] text-neutral-500 text-center py-3">Buscando producto...</p>`;
-    try {
-        const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${encodeURIComponent(barcode)}.json`);
-        const data = await res.json();
-        if (data.status !== 1 || !data.product) {
-            resultContainer.innerHTML = `<p class="text-[11px] text-red-400 text-center py-3">No se encontró ningún producto con ese código.</p>`;
-            return;
-        }
-        const n = data.product.nutriments || {};
-        pendingScanFood = {
-            name: data.product.product_name || 'Producto sin nombre',
-            brand: data.product.brands ? data.product.brands.split(',')[0].trim() : '',
-            kcal100: Math.round(n['energy-kcal_100g'] || 0),
-            p100: Math.round((n['proteins_100g'] || 0) * 10) / 10,
-            c100: Math.round((n['carbohydrates_100g'] || 0) * 10) / 10,
-            f100: Math.round((n['fat_100g'] || 0) * 10) / 10
-        };
-        renderScanConfirmation();
-    } catch (err) {
-        console.error(err);
-        resultContainer.innerHTML = `<p class="text-[11px] text-red-400 text-center py-3">No se pudo buscar el producto. Revisa tu conexión.</p>`;
+    
+    // Validación de entrada
+    const cleanBarcode = barcode.trim();
+    if (!cleanBarcode || cleanBarcode.length < 8) {
+        resultContainer.innerHTML = `<p class="text-[11px] text-red-400 text-center py-3">⚠️ Código de barras inválido (muy corto).</p>`;
+        return;
     }
+    
+    // Solo números
+    if (!/^\d+$/.test(cleanBarcode)) {
+        resultContainer.innerHTML = `<p class="text-[11px] text-red-400 text-center py-3">⚠️ El código debe contener solo números.</p>`;
+        return;
+    }
+    
+    resultContainer.innerHTML = `<p class="text-[11px] text-neutral-500 text-center py-3">🔍 Buscando producto...</p>`;
+    
+    // Reintentos automáticos
+    let lastError = null;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+            const res = await fetch(
+                `https://world.openfoodfacts.org/api/v0/product/${encodeURIComponent(cleanBarcode)}.json`
+            );
+            
+            if (!res.ok) {
+                lastError = `Error HTTP ${res.status}`;
+                if (attempt < 3) {
+                    await new Promise(r => setTimeout(r, 500 * attempt));
+                    continue;
+                }
+                throw new Error(lastError);
+            }
+            
+            const data = await res.json();
+            
+            if (data.status !== 1 || !data.product) {
+                resultContainer.innerHTML = `<p class="text-[11px] text-yellow-400 text-center py-3">⚠️ Producto no encontrado en la base de datos.</p>`;
+                return;
+            }
+            
+            const n = data.product.nutriments || {};
+            
+            // Valida que tenga información nutricional
+            if (!n['energy-kcal_100g'] && !n['proteins_100g'] && !n['carbohydrates_100g'] && !n['fat_100g']) {
+                resultContainer.innerHTML = `<p class="text-[11px] text-yellow-400 text-center py-3">⚠️ El producto no tiene información nutricional.</p>`;
+                return;
+            }
+            
+            pendingScanFood = {
+                name: data.product.product_name || 'Producto sin nombre',
+                brand: data.product.brands ? data.product.brands.split(',')[0].trim() : '',
+                kcal100: Math.round(n['energy-kcal_100g'] || 0),
+                p100: Math.round((n['proteins_100g'] || 0) * 10) / 10,
+                c100: Math.round((n['carbohydrates_100g'] || 0) * 10) / 10,
+                f100: Math.round((n['fat_100g'] || 0) * 10) / 10
+            };
+            
+            renderScanConfirmation();
+            return;
+            
+        } catch (err) {
+            lastError = err.message;
+            if (attempt < 3) {
+                await new Promise(r => setTimeout(r, 500 * attempt));
+            }
+        }
+    }
+    
+    console.error('Barcode lookup failed after 3 attempts:', lastError);
+    resultContainer.innerHTML = `<p class="text-[11px] text-red-400 text-center py-3">❌ No se pudo buscar el producto. Revisa tu conexión e intenta de nuevo.</p>`;
 }
 
 // ---- Modo foto con IA (comida sin código, ej. fruta o plato casero) ----
