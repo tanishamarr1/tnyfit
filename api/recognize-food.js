@@ -1,14 +1,3 @@
-// =============================================================================
-// TNY FIT — Función serverless de Vercel: reconocimiento de comida por foto
-// =============================================================================
-// Esta función corre en el servidor de Vercel, NUNCA en el navegador, así que
-// la variable GEMINI_API_KEY nunca queda expuesta al público (a diferencia de
-// DONATION_LINK en app.js, que sí es público porque no es sensible).
-//
-// Configúrala en: Vercel Dashboard → tu proyecto → Settings →
-// Environment Variables → Name: GEMINI_API_KEY, Value: tu clave de
-// aistudio.google.com/apikey
-// =============================================================================
 
 module.exports = async function handler(req, res) {
     if (req.method !== 'POST') {
