@@ -1,3 +1,14 @@
+// =============================================================================
+// TNY FIT — Función serverless de Vercel: interpretar comida por texto/voz
+// =============================================================================
+// Recibe una frase libre en español (escrita o transcrita por voz, ej. "comí
+// dos huevos y un pan") y usa Gemini (solo texto, sin imagen) para separarla
+// en alimentos individuales con su estimación nutricional. Corre en el
+// servidor de Vercel para que GEMINI_API_KEY nunca quede expuesta al público.
+//
+// Configúrala en: Vercel Dashboard → tu proyecto → Settings →
+// Environment Variables → Name: GEMINI_API_KEY
+// =============================================================================
 
 module.exports = async function handler(req, res) {
     if (req.method !== 'POST') {
@@ -30,7 +41,7 @@ Si no logras identificar ningún alimento, responde: []`;
 
     try {
         const geminiRes = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
             {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -43,8 +54,8 @@ Si no logras identificar ningún alimento, responde: []`;
 
         if (!geminiRes.ok) {
             const errText = await geminiRes.text();
-            console.error('Gemini API error:', errText);
-            res.status(502).json({ error: 'La IA no pudo interpretar el texto.' });
+            console.error('Gemini API error:', geminiRes.status, errText);
+            res.status(502).json({ error: `La IA no pudo interpretar el texto (código ${geminiRes.status}).` });
             return;
         }
 

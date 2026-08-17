@@ -1,3 +1,14 @@
+// =============================================================================
+// TNY FIT — Función serverless de Vercel: reconocimiento de comida por foto
+// =============================================================================
+// Esta función corre en el servidor de Vercel, NUNCA en el navegador, así que
+// la variable GEMINI_API_KEY nunca queda expuesta al público (a diferencia de
+// DONATION_LINK en app.js, que sí es público porque no es sensible).
+//
+// Configúrala en: Vercel Dashboard → tu proyecto → Settings →
+// Environment Variables → Name: GEMINI_API_KEY, Value: tu clave de
+// aistudio.google.com/apikey
+// =============================================================================
 
 module.exports = async function handler(req, res) {
     if (req.method !== 'POST') {
@@ -25,7 +36,7 @@ Si no logras identificar comida en la imagen, responde: {"name": null}`;
 
     try {
         const geminiRes = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
             {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -43,8 +54,8 @@ Si no logras identificar comida en la imagen, responde: {"name": null}`;
 
         if (!geminiRes.ok) {
             const errText = await geminiRes.text();
-            console.error('Gemini API error:', errText);
-            res.status(502).json({ error: 'La IA no pudo procesar la imagen.' });
+            console.error('Gemini API error:', geminiRes.status, errText);
+            res.status(502).json({ error: `La IA no pudo procesar la imagen (código ${geminiRes.status}).` });
             return;
         }
 
