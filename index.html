@@ -808,8 +808,9 @@
             </div>
 
             <div class="flex gap-1.5 bg-neutral-950 border border-neutral-900 rounded-xl p-1">
-                <button type="button" id="scan-tab-barcode" onclick="selectScanMode('barcode')" class="flex-1 rounded-lg py-2 text-[11px] font-semibold uppercase tracking-wider transition-all bg-brandPurple text-white">Código de barras</button>
-                <button type="button" id="scan-tab-photo" onclick="selectScanMode('photo')" class="flex-1 rounded-lg py-2 text-[11px] font-semibold uppercase tracking-wider transition-all text-neutral-400">Foto con IA</button>
+                <button type="button" id="scan-tab-barcode" onclick="selectScanMode('barcode')" class="flex-1 rounded-lg py-2 text-[11px] font-semibold uppercase tracking-wider transition-all bg-brandPurple text-white">Código</button>
+                <button type="button" id="scan-tab-photo" onclick="selectScanMode('photo')" class="flex-1 rounded-lg py-2 text-[11px] font-semibold uppercase tracking-wider transition-all text-neutral-400">Foto IA</button>
+                <button type="button" id="scan-tab-text" onclick="selectScanMode('text')" class="flex-1 rounded-lg py-2 text-[11px] font-semibold uppercase tracking-wider transition-all text-neutral-400">Texto/Voz</button>
             </div>
 
             <div id="scan-mode-barcode" class="space-y-3">
@@ -822,12 +823,26 @@
             </div>
 
             <div id="scan-mode-photo" class="hidden space-y-3">
-                <p class="text-[11px] text-neutral-400 leading-relaxed">Toma una foto del plato o alimento (sin empaque, ej. una fruta o comida casera). La IA estima el alimento y sus macros siempre revisa el resultado antes de agregarlo.</p>
+                <p class="text-[11px] text-neutral-400 leading-relaxed">Toma una foto del plato o alimento (sin empaque, ej. una fruta o comida casera). La IA estima el alimento y sus macros — siempre revisa el resultado antes de agregarlo.</p>
                 <label class="w-full bg-brandPurple text-white font-semibold rounded-xl py-3 flex items-center justify-center gap-2 cursor-pointer hover:opacity-90 transition-all text-sm">
                     <i data-lucide="camera" class="w-4 h-4"></i>
                     <span>Tomar foto de la comida</span>
                     <input type="file" accept="image/*" capture="environment" class="hidden" onchange="handleFoodPhoto(event)">
                 </label>
+            </div>
+
+            <div id="scan-mode-text" class="hidden space-y-3">
+                <p class="text-[11px] text-neutral-400 leading-relaxed">Escribe o dicta lo que comiste, en tus palabras. Ej. "comí dos huevos y un pan con mantequilla".</p>
+                <div class="relative">
+                    <textarea id="text-food-input" rows="3" placeholder="Ej. comí dos huevos y un pan..." class="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-2.5 pr-11 text-white placeholder-neutral-600 focus:outline-none focus:border-brandPurple transition-colors text-sm resize-none"></textarea>
+                    <button type="button" id="voice-input-btn" onclick="toggleVoiceInput()" title="Dictar por voz" class="absolute right-2 top-2 w-7 h-7 rounded-full bg-neutral-800 hover:bg-brandPurple text-neutral-300 hover:text-white flex items-center justify-center transition-colors">
+                        <i data-lucide="mic" class="w-3.5 h-3.5"></i>
+                    </button>
+                </div>
+                <button type="button" onclick="analyzeTextFood()" class="w-full bg-brandPurple text-white font-semibold rounded-xl py-3 flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.99] transition-all text-sm">
+                    <i data-lucide="sparkles" class="w-4 h-4"></i>
+                    <span>Analizar con IA</span>
+                </button>
             </div>
 
             <div id="scan-result-container"></div>

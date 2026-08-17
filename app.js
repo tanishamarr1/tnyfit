@@ -1237,12 +1237,15 @@ function renderFoodLog() {
 // capture="environment">, que es lo más compatible entre navegadores (evita
 // tener que manejar un stream de video en vivo).
 
-let pendingScanFood = null; // alimento detectado, esperando confirmar cantidad
+let pendingScanFood = null; // alimento detectado (código o foto), esperando confirmar cantidad
+let pendingTextFoodItems = []; // alimentos detectados desde texto/voz, esperando confirmar
 
 function openScanFoodModal() {
     document.getElementById('scan-food-modal')?.classList.remove('hidden');
     document.getElementById('scan-result-container').innerHTML = '';
     pendingScanFood = null;
+    pendingTextFoodItems = [];
+    stopVoiceInput();
     selectScanMode('barcode');
 }
 
@@ -1250,17 +1253,20 @@ function closeScanFoodModal() {
     document.getElementById('scan-food-modal')?.classList.add('hidden');
     document.getElementById('scan-result-container').innerHTML = '';
     pendingScanFood = null;
+    pendingTextFoodItems = [];
+    stopVoiceInput();
 }
 
 function selectScanMode(mode) {
-    document.getElementById('scan-mode-barcode').classList.toggle('hidden', mode !== 'barcode');
-    document.getElementById('scan-mode-photo').classList.toggle('hidden', mode !== 'photo');
-    document.getElementById('scan-tab-barcode').classList.toggle('bg-brandPurple', mode === 'barcode');
-    document.getElementById('scan-tab-barcode').classList.toggle('text-white', mode === 'barcode');
-    document.getElementById('scan-tab-photo').classList.toggle('bg-brandPurple', mode === 'photo');
-    document.getElementById('scan-tab-photo').classList.toggle('text-white', mode === 'photo');
+    ['barcode', 'photo', 'text'].forEach(m => {
+        document.getElementById(`scan-mode-${m}`).classList.toggle('hidden', m !== mode);
+        document.getElementById(`scan-tab-${m}`).classList.toggle('bg-brandPurple', m === mode);
+        document.getElementById(`scan-tab-${m}`).classList.toggle('text-white', m === mode);
+        document.getElementById(`scan-tab-${m}`).classList.toggle('text-neutral-400', m !== mode);
+    });
     document.getElementById('scan-result-container').innerHTML = '';
     pendingScanFood = null;
+    pendingTextFoodItems = [];
 }
 
 function fileToBase64(file) {
@@ -1418,6 +1424,158 @@ async function confirmScannedFood() {
 
     await saveSession();
     showToast(`"${pendingScanFood.name}" agregado a tu diario.`, 'success');
+    closeScanFoodModal();
+    renderFoodLog();
+}
+
+// ---- Modo texto / voz ----
+// La transcripción por voz reutiliza el mismo cuadro de texto: el micrófono
+// solo llena el textarea, y el botón "Analizar con IA" es el que interpreta
+// el texto (escrito a mano o dictado) y estima los alimentos.
+let voiceRecognition = null;
+let isListening = false;
+
+function getSpeechRecognitionAPI() {
+    return window.SpeechRecognition || window.webkitSpeechRecognition || null;
+}
+
+function toggleVoiceInput() {
+    const SpeechRecognitionAPI = getSpeechRecognitionAPI();
+    const btn = document.getElementById('voice-input-btn');
+    const textarea = document.getElementById('text-food-input');
+
+    if (!SpeechRecognitionAPI) {
+        showToast('Tu navegador no soporta dictado por voz. Escribe el texto manualmente.', 'error');
+        return;
+    }
+
+    if (isListening) {
+        stopVoiceInput();
+        return;
+    }
+
+    voiceRecognition = new SpeechRecognitionAPI();
+    voiceRecognition.lang = 'es-ES';
+    voiceRecognition.interimResults = false;
+    voiceRecognition.maxAlternatives = 1;
+
+    voiceRecognition.onstart = () => {
+        isListening = true;
+        btn.classList.add('bg-red-500', 'animate-pulse');
+        btn.classList.remove('bg-neutral-800');
+    };
+
+    voiceRecognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        textarea.value = (textarea.value.trim() ? textarea.value.trim() + ' ' : '') + transcript;
+    };
+
+    voiceRecognition.onerror = () => {
+        showToast('No se pudo captar el audio. Intenta de nuevo.', 'error');
+    };
+
+    voiceRecognition.onend = () => {
+        stopVoiceInput();
+    };
+
+    voiceRecognition.start();
+}
+
+function stopVoiceInput() {
+    if (voiceRecognition && isListening) {
+        try { voiceRecognition.stop(); } catch (e) { /* noop */ }
+    }
+    isListening = false;
+    const btn = document.getElementById('voice-input-btn');
+    if (btn) {
+        btn.classList.remove('bg-red-500', 'animate-pulse');
+        btn.classList.add('bg-neutral-800');
+    }
+}
+
+async function analyzeTextFood() {
+    const textarea = document.getElementById('text-food-input');
+    const text = textarea?.value.trim();
+    const resultContainer = document.getElementById('scan-result-container');
+    if (!text) {
+        showToast('Escribe o dicta lo que comiste primero.', 'error');
+        return;
+    }
+
+    resultContainer.innerHTML = `<p class="text-[11px] text-neutral-500 text-center py-3">Analizando con IA...</p>`;
+
+    try {
+        const res = await fetch('/api/interpret-food-text', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.items || data.items.length === 0) {
+            resultContainer.innerHTML = `<p class="text-[11px] text-red-400 text-center py-3">${data?.error || 'No se pudo identificar ningún alimento en el texto. Intenta ser más específico.'}</p>`;
+            return;
+        }
+        pendingTextFoodItems = data.items.map(item => ({ ...item, qty: item.estimated_grams }));
+        renderTextFoodResults();
+    } catch (err) {
+        console.error(err);
+        resultContainer.innerHTML = `<p class="text-[11px] text-red-400 text-center py-3">No se pudo analizar el texto. Intenta de nuevo.</p>`;
+    }
+}
+
+function renderTextFoodResults() {
+    const resultContainer = document.getElementById('scan-result-container');
+    if (pendingTextFoodItems.length === 0) return;
+
+    resultContainer.innerHTML = `
+        <div class="space-y-2">
+            <p class="text-[10px] text-amber-400">Estimado por IA — revisa y ajusta las cantidades si hace falta.</p>
+            ${pendingTextFoodItems.map((item, idx) => `
+                <div class="p-3 rounded-xl bg-neutral-900 border border-neutral-800 space-y-2">
+                    <p class="text-xs font-semibold text-white">${item.name}</p>
+                    <div class="flex items-center gap-2">
+                        <input type="number" min="1" value="${item.qty}" onchange="updateTextFoodQty(${idx}, this.value)" class="w-20 bg-neutral-950 border border-neutral-800 rounded-lg px-2 py-1.5 text-white text-xs text-center focus:outline-none focus:border-brandPurple">
+                        <span class="text-[10px] text-neutral-500">g</span>
+                        <span class="text-[10px] text-neutral-500 ml-auto">${Math.round(item.kcal * (item.qty / item.estimated_grams))} kcal</span>
+                    </div>
+                </div>
+            `).join('')}
+            <button type="button" onclick="confirmAllTextFoodItems()" class="w-full bg-brandPurple text-white text-xs font-semibold rounded-xl py-2.5 hover:opacity-90 transition-all">
+                Agregar todo a hoy
+            </button>
+        </div>
+    `;
+}
+
+function updateTextFoodQty(idx, value) {
+    const qty = Math.max(parseFloat(value) || 1, 1);
+    pendingTextFoodItems[idx].qty = qty;
+}
+
+async function confirmAllTextFoodItems() {
+    if (pendingTextFoodItems.length === 0) return;
+
+    const dateKey = todayKey();
+    if (!sessionState.foodLogByDate) sessionState.foodLogByDate = {};
+    if (!sessionState.foodLogByDate[dateKey]) sessionState.foodLogByDate[dateKey] = [];
+
+    pendingTextFoodItems.forEach(item => {
+        const factor = item.qty / item.estimated_grams;
+        sessionState.foodLogByDate[dateKey].push({
+            id: `food_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+            name: item.name,
+            brand: '',
+            qty: item.qty,
+            kcal: Math.round(item.kcal * factor),
+            p: Math.round(item.protein_g * factor * 10) / 10,
+            c: Math.round(item.carbs_g * factor * 10) / 10,
+            g: Math.round(item.fat_g * factor * 10) / 10
+        });
+    });
+
+    await saveSession();
+    showToast(`${pendingTextFoodItems.length} alimento(s) agregados a tu diario.`, 'success');
+    pendingTextFoodItems = [];
     closeScanFoodModal();
     renderFoodLog();
 }
