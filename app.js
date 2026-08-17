@@ -1231,6 +1231,198 @@ function renderFoodLog() {
 }
 
 // =========================================================================
+// ESCANEO DE COMIDA — código de barras (Open Food Facts) y foto con IA
+// =========================================================================
+// Ambos modos reutilizan la cámara del celular vía <input type="file"
+// capture="environment">, que es lo más compatible entre navegadores (evita
+// tener que manejar un stream de video en vivo).
+
+let pendingScanFood = null; // alimento detectado, esperando confirmar cantidad
+
+function openScanFoodModal() {
+    document.getElementById('scan-food-modal')?.classList.remove('hidden');
+    document.getElementById('scan-result-container').innerHTML = '';
+    pendingScanFood = null;
+    selectScanMode('barcode');
+}
+
+function closeScanFoodModal() {
+    document.getElementById('scan-food-modal')?.classList.add('hidden');
+    document.getElementById('scan-result-container').innerHTML = '';
+    pendingScanFood = null;
+}
+
+function selectScanMode(mode) {
+    document.getElementById('scan-mode-barcode').classList.toggle('hidden', mode !== 'barcode');
+    document.getElementById('scan-mode-photo').classList.toggle('hidden', mode !== 'photo');
+    document.getElementById('scan-tab-barcode').classList.toggle('bg-brandPurple', mode === 'barcode');
+    document.getElementById('scan-tab-barcode').classList.toggle('text-white', mode === 'barcode');
+    document.getElementById('scan-tab-photo').classList.toggle('bg-brandPurple', mode === 'photo');
+    document.getElementById('scan-tab-photo').classList.toggle('text-white', mode === 'photo');
+    document.getElementById('scan-result-container').innerHTML = '';
+    pendingScanFood = null;
+}
+
+function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
+// ---- Modo código de barras ----
+async function handleBarcodePhoto(fileInputEvent) {
+    const file = fileInputEvent.target.files[0];
+    if (!file) return;
+    const resultContainer = document.getElementById('scan-result-container');
+    resultContainer.innerHTML = `<p class="text-[11px] text-neutral-500 text-center py-3">Leyendo código de barras...</p>`;
+
+    try {
+        if (!('BarcodeDetector' in window)) {
+            resultContainer.innerHTML = `
+                <p class="text-[11px] text-amber-400 text-center py-2">Tu navegador no soporta lectura automática. Escribe el número manualmente:</p>
+                <div class="flex gap-2">
+                    <input type="text" id="manual-barcode-input" placeholder="Número de código de barras" class="flex-grow bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-brandPurple">
+                    <button type="button" onclick="lookupBarcodeManual()" class="bg-brandPurple text-white text-xs font-semibold rounded-xl px-4">Buscar</button>
+                </div>
+            `;
+            return;
+        }
+        const bitmap = await createImageBitmap(file);
+        const detector = new BarcodeDetector();
+        const codes = await detector.detect(bitmap);
+        if (codes.length === 0) {
+            resultContainer.innerHTML = `<p class="text-[11px] text-red-400 text-center py-3">No se detectó ningún código. Intenta con más luz y enfoque.</p>`;
+            return;
+        }
+        await lookupBarcode(codes[0].rawValue);
+    } catch (err) {
+        console.error(err);
+        resultContainer.innerHTML = `<p class="text-[11px] text-red-400 text-center py-3">Error leyendo la imagen. Intenta de nuevo.</p>`;
+    } finally {
+        fileInputEvent.target.value = '';
+    }
+}
+
+async function lookupBarcodeManual() {
+    const input = document.getElementById('manual-barcode-input');
+    const code = input?.value.trim();
+    if (!code) return;
+    await lookupBarcode(code);
+}
+
+async function lookupBarcode(barcode) {
+    const resultContainer = document.getElementById('scan-result-container');
+    resultContainer.innerHTML = `<p class="text-[11px] text-neutral-500 text-center py-3">Buscando producto...</p>`;
+    try {
+        const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${encodeURIComponent(barcode)}.json`);
+        const data = await res.json();
+        if (data.status !== 1 || !data.product) {
+            resultContainer.innerHTML = `<p class="text-[11px] text-red-400 text-center py-3">No se encontró ningún producto con ese código.</p>`;
+            return;
+        }
+        const n = data.product.nutriments || {};
+        pendingScanFood = {
+            name: data.product.product_name || 'Producto sin nombre',
+            brand: data.product.brands ? data.product.brands.split(',')[0].trim() : '',
+            kcal100: Math.round(n['energy-kcal_100g'] || 0),
+            p100: Math.round((n['proteins_100g'] || 0) * 10) / 10,
+            c100: Math.round((n['carbohydrates_100g'] || 0) * 10) / 10,
+            f100: Math.round((n['fat_100g'] || 0) * 10) / 10
+        };
+        renderScanConfirmation();
+    } catch (err) {
+        console.error(err);
+        resultContainer.innerHTML = `<p class="text-[11px] text-red-400 text-center py-3">No se pudo buscar el producto. Revisa tu conexión.</p>`;
+    }
+}
+
+// ---- Modo foto con IA (comida sin código, ej. fruta o plato casero) ----
+async function handleFoodPhoto(fileInputEvent) {
+    const file = fileInputEvent.target.files[0];
+    if (!file) return;
+    const resultContainer = document.getElementById('scan-result-container');
+    resultContainer.innerHTML = `<p class="text-[11px] text-neutral-500 text-center py-3">Analizando la foto con IA...</p>`;
+
+    try {
+        const base64 = await fileToBase64(file);
+        const res = await fetch('/api/recognize-food', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ imageBase64: base64, mimeType: file.type || 'image/jpeg' })
+        });
+        const data = await res.json();
+        if (!res.ok || !data || !data.name) {
+            resultContainer.innerHTML = `<p class="text-[11px] text-red-400 text-center py-3">${data?.error || 'No se pudo identificar el alimento. Intenta con una foto más clara.'}</p>`;
+            return;
+        }
+        const grams = data.estimated_grams || 100;
+        pendingScanFood = {
+            name: data.name,
+            brand: '',
+            kcal100: Math.round((data.kcal / grams) * 100),
+            p100: Math.round((data.protein_g / grams) * 100 * 10) / 10,
+            c100: Math.round((data.carbs_g / grams) * 100 * 10) / 10,
+            f100: Math.round((data.fat_g / grams) * 100 * 10) / 10,
+            suggestedGrams: grams,
+            isAiEstimate: true
+        };
+        renderScanConfirmation();
+    } catch (err) {
+        console.error(err);
+        resultContainer.innerHTML = `<p class="text-[11px] text-red-400 text-center py-3">No se pudo analizar la foto. Intenta de nuevo.</p>`;
+    } finally {
+        fileInputEvent.target.value = '';
+    }
+}
+
+function renderScanConfirmation() {
+    const resultContainer = document.getElementById('scan-result-container');
+    if (!pendingScanFood) return;
+    const qty = pendingScanFood.suggestedGrams || 100;
+    resultContainer.innerHTML = `
+        <div class="p-3 rounded-xl bg-neutral-900 border border-neutral-800 space-y-2">
+            <p class="text-xs font-semibold text-white">${pendingScanFood.name}</p>
+            ${pendingScanFood.isAiEstimate ? `<p class="text-[10px] text-amber-400">Estimado por IA — revisa y ajusta la cantidad si hace falta.</p>` : ''}
+            <div class="flex items-center gap-2">
+                <input type="number" min="1" value="${qty}" id="scan-qty-input" class="w-20 bg-neutral-950 border border-neutral-800 rounded-lg px-2 py-1.5 text-white text-xs text-center focus:outline-none focus:border-brandPurple">
+                <span class="text-[10px] text-neutral-500">g</span>
+                <button type="button" onclick="confirmScannedFood()" class="ml-auto bg-brandPurple text-white text-xs font-semibold rounded-lg px-4 py-2">Agregar a hoy</button>
+            </div>
+        </div>
+    `;
+}
+
+async function confirmScannedFood() {
+    if (!pendingScanFood) return;
+    const qtyInput = document.getElementById('scan-qty-input');
+    const qty = Math.max(parseFloat(qtyInput?.value) || 100, 1);
+    const factor = qty / 100;
+
+    const dateKey = todayKey();
+    if (!sessionState.foodLogByDate) sessionState.foodLogByDate = {};
+    if (!sessionState.foodLogByDate[dateKey]) sessionState.foodLogByDate[dateKey] = [];
+
+    sessionState.foodLogByDate[dateKey].push({
+        id: `food_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+        name: pendingScanFood.name,
+        brand: pendingScanFood.brand,
+        qty,
+        kcal: Math.round(pendingScanFood.kcal100 * factor),
+        p: Math.round(pendingScanFood.p100 * factor * 10) / 10,
+        c: Math.round(pendingScanFood.c100 * factor * 10) / 10,
+        g: Math.round(pendingScanFood.f100 * factor * 10) / 10
+    });
+
+    await saveSession();
+    showToast(`"${pendingScanFood.name}" agregado a tu diario.`, 'success');
+    closeScanFoodModal();
+    renderFoodLog();
+}
+
+// =========================================================================
 // HIDRATACIÓN
 // =========================================================================
 
