@@ -1,3 +1,4 @@
+
 const DONATION_LINK = 'https://paypal.me/TanishaMaria'; // TODO: reemplaza con tu link real
 const DONATION_PAYMENT_INFO = 'PayPal: paypal.me/TanishaMaria'; // TODO: reemplaza con tus datos reales
 
@@ -277,7 +278,7 @@ function profileRowToSessionState(row) {
         restDays: row.rest_days || [], // NUEVO: días de descanso seleccionados
         reminderEnabled: row.reminder_enabled || false,
         reminderTime: row.reminder_time || '19:00',
-        reminderTypes: row.reminder_types || { routine: true, water: false, food: false }, // NUEVO
+        reminderTypes: { routine: true, water: false, food: false }, // Valor por defecto (sin leer de DB)
         foodLogByDate: row.food_log_by_date || {}, // NUEVO: diario de comidas
         customRoutine: row.custom_routine || {} // NUEVO: rutina personalizada por día
     };
@@ -313,7 +314,7 @@ async function insertProfile(profile) {
         rest_days: profile.restDays || [], // NUEVO
         reminder_enabled: profile.reminderEnabled || false,
         reminder_time: profile.reminderTime || '19:00',
-        reminder_types: profile.reminderTypes || { routine: true, water: false, food: false }, // NUEVO
+        // reminder_types se salta porque no existe en DB aún
         food_log_by_date: profile.foodLogByDate || {}, // NUEVO
         custom_routine: profile.customRoutine || {} // NUEVO
     });
@@ -342,7 +343,7 @@ async function saveSession() {
             rest_days: sessionState.restDays || [], // NUEVO
             reminder_enabled: sessionState.reminderEnabled,
             reminder_time: sessionState.reminderTime,
-            reminder_types: sessionState.reminderTypes || { routine: true, water: false, food: false }, // NUEVO
+            // reminder_types se salta porque no existe en DB aún
             food_log_by_date: sessionState.foodLogByDate || {}, // NUEVO
             custom_routine: sessionState.customRoutine || {} // NUEVO
         })
