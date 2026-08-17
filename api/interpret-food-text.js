@@ -1,13 +1,6 @@
 // =============================================================================
 // TNY FIT — Función serverless de Vercel: interpretar comida por texto/voz
-// USANDO OPENAI (ChatGPT) EN LUGAR DE GEMINI
-// =============================================================================
-// Recibe una frase libre en español (escrita o transcrita por voz, ej. "comí
-// dos huevos y un pan") y usa OpenAI para separarla en alimentos individuales
-// con su estimación nutricional.
-//
-// Configúrala en: Vercel Dashboard → tu proyecto → Settings →
-// Environment Variables → Name: OPENAI_API_KEY
+// USANDO GOOGLE GEMINI 1.5-FLASH (GRATIS - 15,000 requests/mes)
 // =============================================================================
 
 module.exports = async function handler(req, res) {
@@ -16,9 +9,9 @@ module.exports = async function handler(req, res) {
         return;
     }
 
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-        res.status(500).json({ error: 'OPENAI_API_KEY no está configurada en Vercel.' });
+        res.status(500).json({ error: 'GEMINI_API_KEY no está configurada en Vercel.' });
         return;
     }
 
@@ -40,35 +33,27 @@ Si la frase menciona una cantidad (ej. "dos huevos", "una taza de arroz"), úsal
 Si no logras identificar ningún alimento, responde: []`;
 
     try {
-        const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
-            },
-            body: JSON.stringify({
-                model: 'gpt-4o-mini',
-                messages: [
-                    {
-                        role: 'user',
-                        content: prompt
-                    }
-                ],
-                temperature: 0.7,
-                response_format: { type: 'json_object' }
-            })
-        });
+        const geminiRes = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig: { response_mime_type: 'application/json' }
+                })
+            }
+        );
 
-        if (!openaiRes.ok) {
-            const errText = await openaiRes.text();
-            console.error('OpenAI API error:', openaiRes.status, errText);
-            res.status(502).json({ error: `La IA no pudo interpretar el texto (código ${openaiRes.status}).` });
+        if (!geminiRes.ok) {
+            const errText = await geminiRes.text();
+            console.error('Gemini API error:', geminiRes.status, errText);
+            res.status(502).json({ error: `La IA no pudo interpretar el texto (código ${geminiRes.status}).` });
             return;
         }
 
-        const openaiData = await openaiRes.json();
-        const rawText = openaiData?.choices?.[0]?.message?.content;
-        
+        const geminiData = await geminiRes.json();
+        const rawText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text;
         if (!rawText) {
             res.status(502).json({ error: 'Respuesta vacía de la IA.' });
             return;
