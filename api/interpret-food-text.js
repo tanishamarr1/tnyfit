@@ -84,3 +84,4 @@ Si no logras identificar ningún alimento, responde: []`;
         res.status(500).json({ error: 'Error interno interpretando el texto.' });
     }
 };
+

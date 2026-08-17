@@ -1092,7 +1092,6 @@ async function searchFoodDatabase(query) {
         
         return (data.products || [])
             .filter(p => {
-                // Validaciones más estrictas
                 if (!p.product_name || p.product_name.trim().length < 2) return false;
                 if (!p.nutriments) return false;
                 
@@ -1101,12 +1100,10 @@ async function searchFoodDatabase(query) {
                 const carbs = p.nutriments['carbohydrates_100g'];
                 const fat = p.nutriments['fat_100g'];
                 
-                // Rechaza productos sin información nutricional mínima
                 if (kcal == null || (protein == null && carbs == null && fat == null)) {
                     return false;
                 }
                 
-                // Rechaza valores anómalos (ej: 9000+ kcal por 100g)
                 if (kcal > 900) return false;
                 
                 return true;
@@ -1120,7 +1117,7 @@ async function searchFoodDatabase(query) {
                 c100: Math.round((p.nutriments['carbohydrates_100g'] || 0) * 10) / 10,
                 f100: Math.round((p.nutriments['fat_100g'] || 0) * 10) / 10
             }))
-            .slice(0, 8); // Limita a 8 resultados
+            .slice(0, 8);
             
     } catch (err) {
         console.error('Search error:', err);
@@ -1194,13 +1191,11 @@ async function addFoodLogEntry(resultIdx) {
     const qty = Math.max(parseFloat(qtyInput.value) || 100, 1);
     const factor = qty / 100;
 
-    // Inicializa estructuras de datos correctamente
     const dateKey = todayKey();
     if (!sessionState) sessionState = {};
     if (!sessionState.foodLogByDate) sessionState.foodLogByDate = {};
     if (!sessionState.foodLogByDate[dateKey]) sessionState.foodLogByDate[dateKey] = [];
 
-    // Crea el objeto de entrada correctamente
     const entry = {
         id: `food_${Date.now()}_${Math.floor(Math.random() * 10000)}`,
         name: food.name || 'Alimento sin nombre',
@@ -1212,7 +1207,6 @@ async function addFoodLogEntry(resultIdx) {
         f: Math.round(food.f100 * factor * 10) / 10
     };
 
-    // Valida que los valores sean numéricos
     if (isNaN(entry.kcal) || isNaN(entry.p) || isNaN(entry.c) || isNaN(entry.f)) {
         showToast('Error: Datos nutricionales inválidos.', 'error');
         return;
@@ -1225,13 +1219,12 @@ async function addFoodLogEntry(resultIdx) {
         showToast(`"${food.name}" ✓ agregado a tu diario.`, 'success');
         renderFoodLog();
         
-        // Limpia el input
         const input = document.getElementById('food-search-input');
         if (input) input.value = '';
     } catch (err) {
         console.error('Error saving:', err);
         showToast('Error al guardar. Intenta de nuevo.', 'error');
-        sessionState.foodLogByDate[dateKey].pop(); // Revierte el cambio
+        sessionState.foodLogByDate[dateKey].pop();
     }
 }
 
@@ -1383,14 +1376,12 @@ async function lookupBarcodeManual() {
 async function lookupBarcode(barcode) {
     const resultContainer = document.getElementById('scan-result-container');
     
-    // Validación de entrada
     const cleanBarcode = barcode.trim();
     if (!cleanBarcode || cleanBarcode.length < 8) {
         resultContainer.innerHTML = `<p class="text-[11px] text-red-400 text-center py-3">⚠️ Código de barras inválido (muy corto).</p>`;
         return;
     }
     
-    // Solo números
     if (!/^\d+$/.test(cleanBarcode)) {
         resultContainer.innerHTML = `<p class="text-[11px] text-red-400 text-center py-3">⚠️ El código debe contener solo números.</p>`;
         return;
@@ -1398,7 +1389,6 @@ async function lookupBarcode(barcode) {
     
     resultContainer.innerHTML = `<p class="text-[11px] text-neutral-500 text-center py-3">🔍 Buscando producto...</p>`;
     
-    // Reintentos automáticos
     let lastError = null;
     for (let attempt = 1; attempt <= 3; attempt++) {
         try {
@@ -1424,7 +1414,6 @@ async function lookupBarcode(barcode) {
             
             const n = data.product.nutriments || {};
             
-            // Valida que tenga información nutricional
             if (!n['energy-kcal_100g'] && !n['proteins_100g'] && !n['carbohydrates_100g'] && !n['fat_100g']) {
                 resultContainer.innerHTML = `<p class="text-[11px] text-yellow-400 text-center py-3">⚠️ El producto no tiene información nutricional.</p>`;
                 return;
