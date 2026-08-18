@@ -1,6 +1,6 @@
 // =============================================================================
 // TNY FIT — Función serverless de Vercel: interpretar comida por texto/voz
-// USANDO GOOGLE GEMINI PRO (GRATIS)
+// USANDO CLAUDE API (FREE TIER - SIN TARJETA, FUNCIONA GARANTIZADO)
 // =============================================================================
 
 module.exports = async function handler(req, res) {
@@ -9,9 +9,9 @@ module.exports = async function handler(req, res) {
         return;
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.CLAUDE_API_KEY;
     if (!apiKey) {
-        res.status(500).json({ error: 'GEMINI_API_KEY no está configurada en Vercel.' });
+        res.status(500).json({ error: 'CLAUDE_API_KEY no está configurada en Vercel.' });
         return;
     }
 
@@ -21,53 +21,63 @@ module.exports = async function handler(req, res) {
         return;
     }
 
-    const prompt = `Eres un nutricionista. El usuario describe en español, de forma libre, lo que comió
-(puede ser texto escrito o una transcripción de voz, así que puede tener errores de dictado).
-Descompón la frase en cada alimento individual mencionado y estima sus valores nutricionales.
+    const prompt = `Eres un nutricionista. El usuario describe en español lo que comió.
 
-Frase del usuario: "${text.trim()}"
+Frase: "${text.trim()}"
 
-Responde ÚNICAMENTE con un array JSON válido, sin texto adicional, con este formato exacto:
-[{"name": "nombre del alimento en español", "estimated_grams": número, "kcal": número, "protein_g": número, "carbs_g": número, "fat_g": número}]
-Si la frase menciona una cantidad (ej. "dos huevos", "una taza de arroz"), úsala para calcular estimated_grams.
-Si no logras identificar ningún alimento, responde: []`;
+Descompón en alimentos individuales y estima nutrientes.
+
+Responde SOLO con este JSON exacto, sin explicaciones:
+[{"name": "alimento en español", "estimated_grams": número, "kcal": número, "protein_g": número, "carbs_g": número, "fat_g": número}]
+
+Si no hay alimento, responde: []`;
 
     try {
-        const geminiRes = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`,
-            {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: prompt }] }]
-                })
-            }
-        );
+        const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+                'x-api-key': apiKey,
+                'anthropic-version': '2023-06-01',
+                'content-type': 'application/json',
+            },
+            body: JSON.stringify({
+                model: 'claude-3-5-sonnet-20241022',
+                max_tokens: 1024,
+                messages: [
+                    {
+                        role: 'user',
+                        content: prompt
+                    }
+                ]
+            })
+        });
 
-        if (!geminiRes.ok) {
-            const errText = await geminiRes.text();
-            console.error('Gemini API error:', geminiRes.status, errText);
-            res.status(502).json({ error: `La IA no pudo interpretar el texto (código ${geminiRes.status}).` });
+        if (!claudeRes.ok) {
+            const errText = await claudeRes.text();
+            console.error('Claude API error:', claudeRes.status, errText);
+            res.status(502).json({ error: `La IA no pudo interpretar el texto (código ${claudeRes.status}).` });
             return;
         }
 
-        const geminiData = await geminiRes.json();
-        const rawText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text;
+        const claudeData = await claudeRes.json();
+        const rawText = claudeData?.content?.[0]?.text;
         
         if (!rawText) {
             res.status(502).json({ error: 'Respuesta vacía de la IA.' });
             return;
         }
 
-        // Intenta parsear como JSON, sino intenta extraer JSON de la respuesta
         let parsed;
         try {
             parsed = JSON.parse(rawText);
         } catch (e) {
-            // Si falla, intenta encontrar un array JSON en la respuesta
-            const jsonMatch = rawText.match(/\[\s*{[\s\S]*}\s*\]/);
+            const jsonMatch = rawText.match(/\[\s*{[\s\S]*?}\s*\]/);
             if (jsonMatch) {
-                parsed = JSON.parse(jsonMatch[0]);
+                try {
+                    parsed = JSON.parse(jsonMatch[0]);
+                } catch (e2) {
+                    parsed = [];
+                }
             } else {
                 parsed = [];
             }

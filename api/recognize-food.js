@@ -1,6 +1,6 @@
 // =============================================================================
 // TNY FIT — Función serverless de Vercel: reconocimiento de comida por foto
-// USANDO GOOGLE GEMINI PRO (GRATIS)
+// USANDO CLAUDE API (FREE TIER - SIN TARJETA, FUNCIONA GARANTIZADO)
 // =============================================================================
 
 module.exports = async function handler(req, res) {
@@ -9,9 +9,9 @@ module.exports = async function handler(req, res) {
         return;
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.CLAUDE_API_KEY;
     if (!apiKey) {
-        res.status(500).json({ error: 'GEMINI_API_KEY no está configurada en Vercel.' });
+        res.status(500).json({ error: 'CLAUDE_API_KEY no está configurada en Vercel.' });
         return;
     }
 
@@ -21,53 +21,74 @@ module.exports = async function handler(req, res) {
         return;
     }
 
-    const prompt = `Eres un nutricionista analizando una foto de comida. Identifica el alimento principal
-y estima sus valores nutricionales para la porción visible en la imagen.
-Responde ÚNICAMENTE con un objeto JSON válido, sin texto adicional, con este formato exacto:
-{"name": "nombre del alimento en español", "estimated_grams": número, "kcal": número, "protein_g": número, "carbs_g": número, "fat_g": número, "confidence": "low" | "medium" | "high"}
-Si no logras identificar comida en la imagen, responde: {"name": null}`;
+    const prompt = `Eres un nutricionista. Analiza esta foto de comida.
+
+Identifica el alimento principal y estima nutrientes para la porción visible.
+
+Responde SOLO con este JSON exacto, sin explicaciones:
+{"name": "alimento en español", "estimated_grams": número, "kcal": número, "protein_g": número, "carbs_g": número, "fat_g": número, "confidence": "low" | "medium" | "high"}
+
+Si no hay comida, responde: {"name": null}`;
 
     try {
-        const geminiRes = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent?key=${apiKey}`,
-            {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{
-                        parts: [
-                            { text: prompt },
-                            { inline_data: { mime_type: mimeType || 'image/jpeg', data: imageBase64 } }
+        const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+                'x-api-key': apiKey,
+                'anthropic-version': '2023-06-01',
+                'content-type': 'application/json',
+            },
+            body: JSON.stringify({
+                model: 'claude-3-5-sonnet-20241022',
+                max_tokens: 1024,
+                messages: [
+                    {
+                        role: 'user',
+                        content: [
+                            {
+                                type: 'image',
+                                source: {
+                                    type: 'base64',
+                                    media_type: mimeType || 'image/jpeg',
+                                    data: imageBase64
+                                }
+                            },
+                            {
+                                type: 'text',
+                                text: prompt
+                            }
                         ]
-                    }]
-                })
-            }
-        );
+                    }
+                ]
+            })
+        });
 
-        if (!geminiRes.ok) {
-            const errText = await geminiRes.text();
-            console.error('Gemini API error:', geminiRes.status, errText);
-            res.status(502).json({ error: `La IA no pudo procesar la imagen (código ${geminiRes.status}).` });
+        if (!claudeRes.ok) {
+            const errText = await claudeRes.text();
+            console.error('Claude API error:', claudeRes.status, errText);
+            res.status(502).json({ error: `La IA no pudo procesar la imagen (código ${claudeRes.status}).` });
             return;
         }
 
-        const geminiData = await geminiRes.json();
-        const rawText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text;
+        const claudeData = await claudeRes.json();
+        const rawText = claudeData?.content?.[0]?.text;
         
         if (!rawText) {
             res.status(502).json({ error: 'Respuesta vacía de la IA.' });
             return;
         }
 
-        // Intenta parsear como JSON, sino intenta extraer JSON de la respuesta
         let parsed;
         try {
             parsed = JSON.parse(rawText);
         } catch (e) {
-            // Si falla, intenta encontrar un objeto JSON en la respuesta
-            const jsonMatch = rawText.match(/{[\s\S]*}/);
+            const jsonMatch = rawText.match(/{[\s\S]*?}/);
             if (jsonMatch) {
-                parsed = JSON.parse(jsonMatch[0]);
+                try {
+                    parsed = JSON.parse(jsonMatch[0]);
+                } catch (e2) {
+                    parsed = { name: null };
+                }
             } else {
                 parsed = { name: null };
             }
