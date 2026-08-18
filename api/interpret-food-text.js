@@ -1,6 +1,6 @@
 // =============================================================================
 // TNY FIT — Función serverless de Vercel: interpretar comida por texto/voz
-// USANDO GOOGLE GEMINI 1.5-FLASH (GRATIS - 15,000 requests/mes)
+// USANDO GOOGLE GEMINI PRO (GRATIS)
 // =============================================================================
 
 module.exports = async function handler(req, res) {
@@ -34,13 +34,12 @@ Si no logras identificar ningún alimento, responde: []`;
 
     try {
         const geminiRes = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`,
             {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    contents: [{ parts: [{ text: prompt }] }],
-                    generationConfig: { response_mime_type: 'application/json' }
+                    contents: [{ parts: [{ text: prompt }] }]
                 })
             }
         );
@@ -54,12 +53,26 @@ Si no logras identificar ningún alimento, responde: []`;
 
         const geminiData = await geminiRes.json();
         const rawText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text;
+        
         if (!rawText) {
             res.status(502).json({ error: 'Respuesta vacía de la IA.' });
             return;
         }
 
-        const parsed = JSON.parse(rawText);
+        // Intenta parsear como JSON, sino intenta extraer JSON de la respuesta
+        let parsed;
+        try {
+            parsed = JSON.parse(rawText);
+        } catch (e) {
+            // Si falla, intenta encontrar un array JSON en la respuesta
+            const jsonMatch = rawText.match(/\[\s*{[\s\S]*}\s*\]/);
+            if (jsonMatch) {
+                parsed = JSON.parse(jsonMatch[0]);
+            } else {
+                parsed = [];
+            }
+        }
+
         const items = Array.isArray(parsed) ? parsed : [];
 
         res.status(200).json({

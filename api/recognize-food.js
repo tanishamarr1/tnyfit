@@ -1,6 +1,6 @@
 // =============================================================================
 // TNY FIT — Función serverless de Vercel: reconocimiento de comida por foto
-// USANDO GOOGLE GEMINI 1.5-FLASH (GRATIS - 15,000 requests/mes)
+// USANDO GOOGLE GEMINI PRO (GRATIS)
 // =============================================================================
 
 module.exports = async function handler(req, res) {
@@ -29,7 +29,7 @@ Si no logras identificar comida en la imagen, responde: {"name": null}`;
 
     try {
         const geminiRes = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent?key=${apiKey}`,
             {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -39,8 +39,7 @@ Si no logras identificar comida en la imagen, responde: {"name": null}`;
                             { text: prompt },
                             { inline_data: { mime_type: mimeType || 'image/jpeg', data: imageBase64 } }
                         ]
-                    }],
-                    generationConfig: { response_mime_type: 'application/json' }
+                    }]
                 })
             }
         );
@@ -54,12 +53,26 @@ Si no logras identificar comida en la imagen, responde: {"name": null}`;
 
         const geminiData = await geminiRes.json();
         const rawText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text;
+        
         if (!rawText) {
             res.status(502).json({ error: 'Respuesta vacía de la IA.' });
             return;
         }
 
-        const parsed = JSON.parse(rawText);
+        // Intenta parsear como JSON, sino intenta extraer JSON de la respuesta
+        let parsed;
+        try {
+            parsed = JSON.parse(rawText);
+        } catch (e) {
+            // Si falla, intenta encontrar un objeto JSON en la respuesta
+            const jsonMatch = rawText.match(/{[\s\S]*}/);
+            if (jsonMatch) {
+                parsed = JSON.parse(jsonMatch[0]);
+            } else {
+                parsed = { name: null };
+            }
+        }
+
         if (!parsed.name) {
             res.status(200).json({ name: null });
             return;
